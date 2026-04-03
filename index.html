@@ -643,9 +643,11 @@ function restoreFromFirestore(data){
   if(!data.days)return data;
   return{...data,days:data.days.map(d=>{
     let tracks=(d.tcxTracks||[]).map(tr=>unflatCoords(tr));
-    // migrate legacy single tcx field
     if(!tracks.length&&d.tcx?.coords?.length)tracks=[unflatCoords(d.tcx)];
-    return{...d,tcxTracks:tracks};
+    // normalise fish — older builds may use null, undefined, or 'catches'
+    const fish=Array.isArray(d.fish)?d.fish:Array.isArray(d.catches)?d.catches:[];
+    const misses=Array.isArray(d.misses)?d.misses:[];
+    return{...d,fish,misses,tcxTracks:tracks};
   })};
 }
 
@@ -1297,17 +1299,14 @@ function addDay(d={}){
   el.querySelector('.d-date').addEventListener('change',function(){el.querySelector('.d-moon').value=moonPhase(this.value);});
   $('day-list').appendChild(el);
   renumDays();
-  console.log('addDay: d.fish=',d.fish,'length=',d.fish?.length,'did=',did);
-  if(d.fish?.length){
-    d.fish.forEach((f,fi)=>{
-      console.log('Restoring catch',fi,f);
-      try{addCatch(did,f);console.log('addCatch ok for',f.species);}
+  // Normalise fish array — older trips may store as undefined or use 'catches' key
+  const fishList=Array.isArray(d.fish)?d.fish:Array.isArray(d.catches)?d.catches:[];
+  if(fishList.length){
+    fishList.forEach(f=>{
+      try{addCatch(did,f);}
       catch(e){console.warn('Failed to restore catch:',f,e);}
     });
-  } else {
-    console.log('No fish, adding empty catch row');
-    addCatch(did);
-  }
+  } else addCatch(did);
   if(d.misses?.length){
     d.misses.forEach(m=>{
       try{addMiss(did,m);}
