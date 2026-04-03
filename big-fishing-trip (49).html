@@ -1,0 +1,2230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Big Fishing Trip">
+<title>Big Fishing Trip</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+:root{
+  --bg:#fff;--bg2:#f5f5f5;--bg3:#e8e8e8;
+  --text:#1a1a1a;--text2:#555;--text3:#999;
+  --border:rgba(0,0,0,0.12);--border2:rgba(0,0,0,0.25);
+  --blue:#185FA5;--blue-bg:#E6F1FB;--blue-text:#0C447C;
+  --green:#1D9E75;--green-bg:#EAF3DE;--green-text:#27500A;
+  --amber:#D4860A;--amber-bg:#FEF3DC;--amber-text:#7A4800;
+  --red:#D93025;--red-bg:#FEECEC;--red-text:#7B1F1F;
+  --r:10px;--rs:7px;
+  --sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1c1c1e;--bg2:#2c2c2e;--bg3:#3a3a3c;
+  --text:#f2f2f7;--text2:#aeaeb2;--text3:#636366;
+  --border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.22);
+  --blue-bg:#0c2340;--blue-text:#85B7EB;
+  --green-bg:#0d2e1a;--green-text:#5DCAA5;
+  --amber-bg:#2a1f00;--amber-text:#FAC775;
+  --red-bg:#2d0d0d;--red-text:#F09595;
+}}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;font-size:16px;line-height:1.4;overflow:hidden}
+input[type=checkbox],input[type=radio]{cursor:pointer!important}
+button{font-family:inherit}
+
+/* ── LOGIN ── */
+#login{display:none;position:fixed;inset:0;background:var(--bg);z-index:999;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center}
+#login.show{display:flex}
+.login-logo{width:72px;height:72px;background:var(--blue);border-radius:20px;display:flex;align-items:center;justify-content:center;margin-bottom:24px}
+.login-logo svg{width:42px;height:42px;fill:#fff}
+.login-title{font-size:26px;font-weight:700;margin-bottom:8px;letter-spacing:-.5px}
+.login-sub{font-size:14px;color:var(--text2);margin-bottom:40px;line-height:1.6}
+.btn-google{display:flex;align-items:center;justify-content:center;gap:12px;background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r);padding:14px 24px;font-size:16px;font-weight:600;cursor:pointer;width:100%;max-width:320px;color:var(--text)}
+
+/* ── APP SHELL ── */
+#app{display:none;flex-direction:column;height:100%;padding-top:var(--sat)}
+
+/* ── TOP NAV ── */
+.top-nav{background:var(--bg);border-bottom:0.5px solid var(--border);padding:10px 16px 8px;flex-shrink:0;display:flex;align-items:center;gap:10px}
+.nav-logo{width:30px;height:30px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nav-logo svg{width:18px;height:18px;fill:#fff}
+.nav-title{font-size:17px;font-weight:700;letter-spacing:-.3px}
+.nav-sub{font-size:11px;color:var(--text3);margin-top:1px;display:flex;align-items:center;gap:4px}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;flex-shrink:0}
+.sync-dot.ing{background:var(--amber);animation:pulse 1s infinite}
+.sync-dot.err{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.nav-avatar{width:30px;height:30px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--blue-text);overflow:hidden;flex-shrink:0;margin-left:auto}
+.btn-signout-nav{background:transparent;border:0.5px solid var(--border2);color:var(--text2);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer}
+
+/* ── SCROLL ── */
+#scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 16px 130px}
+
+/* ── TAB BAR ── */
+.tab-bar{position:fixed;bottom:0;left:0;right:0;background:var(--bg);border-top:0.5px solid var(--border);display:flex;padding-bottom:var(--sab);z-index:100}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 4px 6px;gap:3px;border:none;background:transparent;color:var(--text3);font-size:10px;font-weight:500;cursor:pointer;transition:color .15s;touch-action:manipulation}
+.tab-btn.active{color:var(--blue)}
+.tab-btn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.tab-btn.active svg{stroke:var(--blue)}
+
+/* ── SECTIONS ── */
+.section{padding-top:16px}
+
+/* ── TYPOGRAPHY ── */
+.slabel{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:18px 0 8px;padding-bottom:4px;border-bottom:0.5px solid var(--border)}
+.slabel:first-child{margin-top:0}
+.plan-banner{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--rs);padding:10px 12px;font-size:13px;color:var(--text2);margin-bottom:12px;display:flex;align-items:flex-start;gap:8px;line-height:1.5}
+.plan-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.col-lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+
+/* ── FORMS ── */
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.field label{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em}
+input,select,textarea{font-family:inherit;font-size:15px;color:var(--text);background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--rs);padding:10px 12px;width:100%;-webkit-appearance:none;appearance:none}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue)}
+textarea{resize:vertical;min-height:72px;line-height:1.5}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.fs13{font-size:13px!important}
+.readonly-field{background:var(--bg3)!important;color:var(--text2)!important}
+
+/* ── CARDS ── */
+.card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.setup-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px;position:relative}
+.day-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.catch-card{background:var(--bg3);border-radius:var(--rs);padding:10px;margin-bottom:8px;position:relative}
+.miss-card{background:var(--bg3);border-radius:var(--rs);padding:10px;margin-bottom:8px;position:relative}
+.day-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:0.5px solid var(--border)}
+.day-badge{background:var(--blue);color:#fff;border-radius:20px;font-size:12px;font-weight:700;padding:2px 10px;display:inline-flex;align-items:center}
+
+/* ── BUTTONS ── */
+.btn-primary{background:var(--blue);color:#fff;border:none;border-radius:var(--rs);padding:14px;font-size:16px;font-weight:600;width:100%;margin-top:8px;cursor:pointer;letter-spacing:-.2px;touch-action:manipulation}
+.btn-primary:active{opacity:.85}
+.btn-danger{background:var(--red);color:#fff;border:none;border-radius:var(--rs);padding:14px;font-size:16px;font-weight:600;width:100%;margin-top:8px;cursor:pointer;touch-action:manipulation}
+.btn-secondary{background:transparent;border:0.5px solid var(--border2);color:var(--blue);border-radius:var(--rs);padding:10px;font-size:14px;font-weight:500;width:100%;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:10px;touch-action:manipulation}
+.btn-add{background:transparent;border:0.5px dashed var(--border2);border-radius:var(--rs);padding:10px;width:100%;font-size:14px;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:10px;touch-action:manipulation}
+.btn-add:active{background:var(--bg3)}
+.btn-add-sm{background:transparent;border:0.5px dashed var(--border2);border-radius:var(--rs);padding:7px 12px;font-size:13px;color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:4px;margin-top:6px;touch-action:manipulation}
+.btn-add-sm:active{background:var(--bg3)}
+.brm{width:28px;height:28px;background:var(--bg3);border:0.5px solid var(--border);border-radius:6px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--text2);flex-shrink:0;touch-action:manipulation}
+.abs-rm{position:absolute;top:10px;right:10px}
+.brm-inline{background:none;border:none;color:var(--red);font-size:13px;cursor:pointer;padding:0;margin-left:auto;touch-action:manipulation}
+.btn-sm-blue{background:transparent;border:0.5px solid var(--border2);color:var(--blue);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:500;cursor:pointer;touch-action:manipulation}
+.btn-sm-red{background:transparent;border:0.5px solid var(--border2);color:var(--red);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:500;cursor:pointer;touch-action:manipulation}
+
+/* ── SUB TABS ── */
+.subtab-bar{display:flex;margin-bottom:16px;border:0.5px solid var(--border2);border-radius:var(--rs);overflow:hidden}
+.subtab-btn{flex:1;padding:10px;border:none;background:var(--bg2);color:var(--text2);font-size:14px;font-weight:500;cursor:pointer;touch-action:manipulation;font-family:inherit}
+.subtab-btn.active{background:var(--blue);color:#fff;font-weight:600}
+
+/* ── ROWS ── */
+.chk-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.chk-row input[type=checkbox]{width:20px;height:20px;flex-shrink:0;accent-color:var(--blue)}
+.chk-row .task-txt{flex:1;font-size:14px}
+.chk-row.done .task-txt{color:var(--text3);text-decoration:line-through}
+.shop-row{display:grid;grid-template-columns:24px 2fr 1.2fr 0.8fr 28px;gap:8px;align-items:center;margin-bottom:8px}
+.shop-row input[type=checkbox]{width:22px;height:22px;accent-color:var(--blue);margin:0}
+.shop-row input[type=text],input[type=number]{font-size:13px}
+.bullet-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.bullet-row input{flex:1;font-size:14px}
+.row3{display:grid;grid-template-columns:2fr 1fr 28px;gap:8px;align-items:center;margin-bottom:8px}
+.row4{display:grid;grid-template-columns:2fr 1fr 1fr 28px;gap:8px;align-items:center;margin-bottom:8px}
+.row3 input,.row3 select,.row4 input,.row4 select{font-size:13px}
+.media-row{display:grid;grid-template-columns:1fr 28px;gap:8px;align-items:center;margin-bottom:6px}
+.lure-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 28px;gap:6px;align-items:center;margin-bottom:8px}
+.lure-row input{font-size:12px}
+.lure-hdr{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 28px;gap:6px;margin-bottom:4px}
+.lure-hdr span{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.lure-section{border-top:0.5px solid var(--border);padding-top:10px;margin-top:8px}
+.comp-row{display:grid;grid-template-columns:1fr 1fr 28px;gap:8px;align-items:center;margin-bottom:8px;position:relative}
+
+/* ── SETUP ── */
+.setup-num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:var(--blue);color:#fff;border-radius:50%;font-size:12px;font-weight:700;margin-bottom:10px}
+
+/* ── STARS ── */
+.stars{display:flex;gap:6px;margin:6px 0 4px}
+.star{font-size:32px;cursor:pointer;color:var(--text3);line-height:1;user-select:none;touch-action:manipulation}
+.star.on{color:var(--amber)}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;font-size:12px;padding:3px 10px;border-radius:20px;font-weight:600}
+.badge.blue{background:var(--blue-bg);color:var(--blue-text)}
+.badge.green{background:var(--green-bg);color:var(--green-text)}
+.badge.amber{background:var(--amber-bg);color:var(--amber-text)}
+.badge.red{background:var(--red-bg);color:var(--red-text)}
+
+/* ── TCX / MAPS ── */
+.tcx-wrap{margin-top:12px;padding-top:12px;border-top:0.5px solid var(--border)}
+.tcx-upload-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:transparent;border:0.5px dashed var(--border2);border-radius:var(--rs);padding:10px 14px;font-size:13px;color:var(--text2);cursor:pointer;width:100%;margin-top:6px;touch-action:manipulation}
+.tcx-chip{display:flex;align-items:center;gap:8px;border:0.5px solid;border-radius:var(--rs);padding:7px 10px;font-size:13px;margin-bottom:4px}
+.tcx-chip-name{flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.map-box{width:100%;height:220px;border-radius:var(--rs);overflow:hidden;border:0.5px solid var(--border);margin-top:6px}
+.map-stat{background:var(--bg3);border-radius:6px;padding:5px 10px;font-size:12px;color:var(--text2);display:inline-block}
+.map-time{font-size:12px;color:var(--text2);margin-bottom:4px;padding:4px 0}
+
+/* ── TRIP CARDS ── */
+.trip-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.trip-card.sel{border-color:var(--blue);background:var(--blue-bg)}
+.trip-card.pend{border-color:var(--amber);border-width:1px}
+.trip-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.trip-dest{font-size:16px;font-weight:700}
+.trip-date{font-size:13px;color:var(--text2);margin-top:2px;white-space:nowrap}
+.trip-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;padding-top:10px;border-top:0.5px solid var(--border)}
+.trip-cb{width:18px!important;height:18px!important;flex-shrink:0;accent-color:var(--blue);margin-top:2px;cursor:pointer}
+
+/* ── STATS / INSIGHTS ── */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.stat-card{background:var(--bg2);border-radius:var(--rs);padding:14px;text-align:center}
+.stat-num{font-size:26px;font-weight:700;letter-spacing:-.5px}
+.stat-lbl{font-size:12px;color:var(--text2);margin-top:2px}
+.insight-card{background:var(--bg2);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.i-title{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.bar-lbl{min-width:110px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+.bar-track{flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px}
+.bar-cnt{min-width:20px;text-align:right;font-weight:600;font-size:12px}
+.i-table{width:100%;border-collapse:collapse;font-size:13px}
+.i-table th{text-align:left;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:4px 6px;border-bottom:0.5px solid var(--border)}
+.i-table td{padding:6px;border-bottom:0.5px solid var(--border)}
+.i-table tr:last-child td{border:none}
+.tr{text-align:right}
+
+/* ── EXPORT BAR ── */
+.export-bar{background:var(--bg);border-top:0.5px solid var(--border);padding:10px 16px;display:none}
+.export-bar.visible{display:block}
+.trips-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+
+/* ── DETAIL VIEW ── */
+.detail-view{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;padding-top:var(--sat)}
+.detail-view.open{display:flex}
+.detail-nav{background:var(--bg);border-bottom:0.5px solid var(--border);padding:12px 16px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.detail-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 40px}
+.drow{display:flex;justify-content:space-between;align-items:flex-start;font-size:14px;padding:7px 0;border-bottom:0.5px solid var(--border)}
+.drow:last-child{border:none}
+.dk{color:var(--text2);min-width:110px;flex-shrink:0}
+.dv{text-align:right;color:var(--text);flex:1;padding-left:8px;word-break:break-word}
+.card-label{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px}
+.phase-badge{display:inline-flex;align-items:center;font-size:12px;padding:3px 10px;border-radius:20px;font-weight:600;margin-bottom:10px}
+.phase-badge.blue{background:var(--blue-bg);color:var(--blue-text)}
+.phase-badge.green{background:var(--green-bg);color:var(--green-text)}
+.info-banner{background:var(--amber-bg);border:0.5px solid var(--amber);border-radius:var(--rs);padding:10px 12px;font-size:13px;color:var(--amber-text);margin-bottom:12px}
+.warn-banner{background:var(--red-bg);border:1.5px solid var(--red);border-radius:var(--rs);padding:10px 12px;font-size:14px;font-weight:600;color:var(--red-text);margin-top:10px}
+
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;align-items:flex-end}
+.modal-overlay.open{display:flex}
+.modal-sheet{background:var(--bg);border-radius:16px 16px 0 0;padding:20px 16px calc(20px + var(--sab));width:100%;max-height:80vh;overflow-y:auto}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:10px}
+.modal-desc{font-size:14px;color:var(--text2);margin-bottom:16px;line-height:1.5}
+.modal-opt{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:0.5px solid var(--border);cursor:pointer;font-size:15px;touch-action:manipulation}
+.modal-opt:last-child{border:none}
+.modal-close{display:block;width:100%;padding:14px;background:var(--bg2);border:none;border-radius:var(--rs);font-size:16px;font-weight:600;color:var(--red);cursor:pointer;margin-top:10px;font-family:inherit;touch-action:manipulation}
+
+/* ── AUTOCOMPLETE ── */
+.ac-wrap{position:relative}
+.ac-sug{display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg);border:0.5px solid var(--border2);border-radius:var(--rs);z-index:50;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.ac-item{padding:10px 12px;cursor:pointer;font-size:14px;border-bottom:0.5px solid var(--border)}
+.ac-item:last-child{border:none}
+.ac-item:active{background:var(--bg2)}
+
+/* ── COST BOX ── */
+.cost-box{background:var(--bg2);border-radius:var(--rs);padding:10px 12px;margin-top:8px}
+.cost-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
+.cost-total-row{display:flex;justify-content:space-between;font-size:14px;font-weight:700;padding:6px 0;border-top:0.5px solid var(--border);margin-top:4px}
+
+/* ── PHOTOS ── */
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.photo-thumb{position:relative;aspect-ratio:1;border-radius:var(--rs);overflow:hidden;background:var(--bg3);border:0.5px solid var(--border)}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.photo-thumb .ph-del{position:absolute;top:4px;right:4px;width:22px;height:22px;background:rgba(0,0,0,.6);border:none;border-radius:50%;color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.photo-thumb .ph-cover{position:absolute;bottom:4px;left:4px;background:var(--amber);color:#fff;border:none;border-radius:4px;font-size:10px;font-weight:600;padding:2px 6px;cursor:pointer}
+.photo-thumb .ph-cover.active{background:var(--green)}
+.photo-upload-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:transparent;border:0.5px dashed var(--border2);border-radius:var(--rs);padding:12px;font-size:13px;color:var(--text2);cursor:pointer;width:100%;touch-action:manipulation}
+.photo-upload-btn:active{background:var(--bg3)}
+.upload-progress{height:4px;background:var(--bg3);border-radius:2px;margin-top:6px;overflow:hidden;display:none}
+.upload-progress.visible{display:block}
+.upload-progress-bar{height:100%;background:var(--blue);border-radius:2px;transition:width .2s}
+/* ── SHARE CARD ── */
+#share-canvas{display:none}
+.share-btn{background:var(--green);color:#fff;border:none;border-radius:var(--rs);padding:12px 20px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;touch-action:manipulation}
+/* ── MISC ── */
+.empty{text-align:center;padding:48px 24px;color:var(--text3);font-size:15px;line-height:1.6}
+.inline-map{margin-top:8px}
+.track-colors{--c0:#185FA5;--c1:#1D9E75;--c2:#D4860A;--c3:#D93025;--c4:#7F77DD}
+.version-footer{margin-top:24px;padding-top:16px;border-top:0.5px solid var(--border);font-size:12px;color:var(--text3);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login" class="show">
+  <div class="login-logo"><svg viewBox="0 0 24 24"><path d="M20 3C20 3 14 5 9 10C6.5 12.5 5 15 5 15L3 13L2 14L5 17C4 18.5 3.5 20 3.5 20H5C5 20 5.5 18.5 6.5 17.5L9 20L10 19L8 17C8 17 10.5 15.5 13 13C18 8 20 3 20 3Z"/></svg></div>
+  <div class="login-title">Big Fishing Trip</div>
+  <div class="login-sub">REEL · Record · Evaluate · Execute · Learn<br><br>Sign in to sync your trips across all your devices.</div>
+  <button class="btn-google" id="btn-signin">
+    <svg viewBox="0 0 48 48" width="22" height="22"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+    Sign in with Google
+  </button>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="top-nav">
+    <div class="nav-logo"><svg viewBox="0 0 24 24"><path d="M20 3C20 3 14 5 9 10C6.5 12.5 5 15 5 15L3 13L2 14L5 17C4 18.5 3.5 20 3.5 20H5C5 20 5.5 18.5 6.5 17.5L9 20L10 19L8 17C8 17 10.5 15.5 13 13C18 8 20 3 20 3Z"/></svg></div>
+    <div style="flex:1;min-width:0">
+      <div class="nav-title">Big Fishing Trip</div>
+      <div class="nav-sub"><span class="sync-dot" id="sync-dot"></span><span id="sync-lbl">Ready</span>&nbsp;·&nbsp;v<span id="app-ver"></span></div>
+    </div>
+    <div id="nav-avatar" class="nav-avatar">?</div>
+    <button class="btn-signout-nav" id="btn-signout">Sign out</button>
+  </div>
+
+  <div id="scroll">
+
+    <!-- MY TRIPS -->
+    <div class="section" id="tab-trips">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <button class="btn-primary" style="margin-top:0" id="btn-new-trip">+ New Trip</button>
+        <label class="btn-primary" style="margin-top:0;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+          + Upload TCX
+          <input type="file" accept=".tcx" style="display:none" id="inp-newtriptcx">
+        </label>
+      </div>
+      <div class="trips-hdr">
+        <span id="exp-count" style="font-size:13px;color:var(--text2)">Tap a trip to select for export</span>
+        <button id="sel-all" style="font-size:13px;color:var(--blue);background:none;border:none;cursor:pointer;touch-action:manipulation">Select all</button>
+      </div>
+      <div id="trips-list"></div>
+      <div class="export-bar" id="exp-bar">
+        <button class="btn-primary" style="margin-top:0" id="btn-export">Export selected to Excel</button>
+      </div>
+    </div>
+
+    <!-- PRE-TRIP -->
+    <div class="section" id="tab-pre" hidden>
+      <div class="subtab-bar">
+        <button class="subtab-btn active" id="pst-planning" data-pst="planning">Planning</button>
+        <button class="subtab-btn" id="pst-gear" data-pst="gear">Gear</button>
+      </div>
+
+      <!-- PLANNING -->
+      <div id="pre-plan">
+        <div class="plan-banner"><div class="plan-dot" style="background:var(--blue)"></div>Plan your trip. Tap Save Trip when done.</div>
+        <p class="slabel">Destination & dates</p>
+        <div class="field"><label>Destination</label><input type="text" id="pre-dest" placeholder="e.g. Batam, Bintan, South China Sea"></div>
+        <div class="fg2">
+          <div class="field"><label>Departure</label><input type="date" id="pre-from"></div>
+          <div class="field"><label>Return</label><input type="date" id="pre-to"></div>
+        </div>
+        <div class="field"><label>Charter details</label><textarea id="pre-charter" placeholder="e.g. MV Seafarer, Tanah Merah 0430, Captain Ali +65 9xxx xxxx" style="min-height:56px"></textarea></div>
+
+        <p class="slabel">Trip costs (SGD)</p>
+        <div class="fg2">
+          <div class="field"><label>Charter cost</label><input type="number" id="cost-charter" placeholder="0.00" min="0" step="0.01"></div>
+          <div class="field"><label>Transport cost</label><input type="number" id="cost-transport" placeholder="0.00" min="0" step="0.01"></div>
+        </div>
+        <div class="fg2">
+          <div class="field"><label>Accommodation</label><input type="number" id="cost-accom" placeholder="0.00" min="0" step="0.01"></div>
+          <div class="field"><label>Pre-trip total</label><input type="text" id="cost-total" readonly class="readonly-field" style="font-weight:600"></div>
+        </div>
+
+        <p class="slabel">Fishing companions</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 28px;gap:8px;margin-bottom:6px">
+          <span class="col-lbl">Name</span><span class="col-lbl">Contact / phone</span><span></span>
+        </div>
+        <div id="companion-list"></div>
+        <button class="btn-add-sm" id="btn-add-comp">+ add companion</button>
+
+        <p class="slabel">Target species & strategy</p>
+        <div class="fg2">
+          <div class="field"><label>Primary target</label><input type="text" id="pre-t1" placeholder="e.g. GT, Grouper"></div>
+          <div class="field"><label>Secondary target</label><input type="text" id="pre-t2" placeholder="e.g. Snapper"></div>
+        </div>
+        <div class="field"><label>Planned strategy</label><textarea id="pre-strategy" placeholder="e.g. Bottom fishing at structure in the morning, jigging mid-day..."></textarea></div>
+
+        <p class="slabel">Forecast conditions</p>
+        <div class="fg2">
+          <div class="field"><label>Forecast moon phase</label>
+            <select id="pre-moon"><option value="">Select</option><option>New moon</option><option>Waxing crescent</option><option>First quarter</option><option>Waxing gibbous</option><option>Full moon</option><option>Waning gibbous</option><option>Last quarter</option><option>Waning crescent</option></select>
+          </div>
+          <div class="field"><label>Forecast high tide</label><input type="time" id="pre-htide"></div>
+        </div>
+        <div class="field"><label>Weather / sea forecast</label><textarea id="pre-fcnotes" placeholder="e.g. Tide turns 0630, best window 0500–0900. Checked Windguru..."></textarea></div>
+
+        <div class="field" style="margin-top:4px"><label>Pre-trip notes</label><textarea id="pre-notes" placeholder="Anything else to plan or research..."></textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button class="btn-primary" style="margin-top:0" id="btn-save-plan">Save Trip</button><button class="btn-secondary" style="margin-bottom:0" id="btn-cancel-plan">Cancel</button></div>
+      </div>
+
+      <!-- GEAR -->
+      <div id="pre-gear" hidden>
+        <div class="plan-banner"><div class="plan-dot" style="background:var(--blue)"></div>Set up your gear for this trip.</div>
+
+        <p class="slabel">Rod & reel setups</p>
+        <button class="btn-secondary" id="btn-load-setup-trip">↩ Load from previous trip</button>
+        <button class="btn-secondary" id="btn-load-setup-lib">📚 Load from saved setups</button>
+        <div id="setup-list" style="margin-top:4px"></div>
+        <button class="btn-add" id="btn-add-setup">+ add setup</button>
+
+        <p class="slabel">Prep tasks</p>
+        <div id="task-list"></div>
+        <button class="btn-add-sm" id="btn-add-task">+ add task</button>
+
+        <p class="slabel">Shopping list</p>
+        <div style="display:grid;grid-template-columns:24px 2fr 1.2fr 0.8fr 28px;gap:8px;margin-bottom:6px;padding:0 2px">
+          <span></span><span class="col-lbl">Item</span><span class="col-lbl">Shop</span><span class="col-lbl">Cost</span><span></span>
+        </div>
+        <div id="shop-list"></div>
+        <button class="btn-add-sm" id="btn-add-shop">+ add item</button>
+        <div class="cost-box" style="margin-top:10px">
+          <div class="cost-row"><span>Total (all items)</span><span id="shop-total-all" style="font-weight:600">S$ 0.00</span></div>
+          <div class="cost-row"><span>Total (bought)</span><span id="shop-total-bought" style="font-weight:600;color:var(--green)">S$ 0.00</span></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px"><button class="btn-primary" style="margin-top:0" id="btn-save-gear">Save Trip</button><button class="btn-secondary" style="margin-bottom:0" id="btn-cancel-gear">Cancel</button></div>
+      </div>
+    </div>
+
+    <!-- TRIP LOG -->
+    <div class="section" id="tab-log" hidden>
+      <div class="plan-banner"><div class="plan-dot" style="background:var(--blue)"></div>Log each fishing day. Add as many days as needed.</div>
+      <p class="slabel">Trip photos (max 10)</p>
+      <div id="trip-photos" class="photo-grid"></div>
+      <div id="trip-photo-progress" class="upload-progress"><div class="upload-progress-bar" id="trip-photo-bar" style="width:0%"></div></div>
+      <label class="photo-upload-btn" id="trip-photo-upload-btn" style="margin-top:8px">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Add trip photo
+        <input type="file" accept="image/*" style="display:none" id="inp-trip-photo">
+      </label>
+      <p class="slabel">Fishing days</p>
+      <div id="day-list"></div>
+      <button class="btn-add" id="btn-add-day">+ add fishing day</button>
+      <div class="field" style="margin-top:8px"><label>Trip notes</label><textarea id="f-notes" placeholder="Overall trip notes, memorable moments..."></textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button class="btn-primary" style="margin-top:0" id="btn-save-log">Save Trip</button><button class="btn-secondary" style="margin-bottom:0" id="btn-cancel-log">Cancel</button></div>
+    </div>
+
+    <!-- POST-TRIP -->
+    <div class="section" id="tab-post" hidden>
+      <div class="plan-banner"><div class="plan-dot" style="background:var(--green)"></div>Fill this in after the trip.</div>
+      <p class="slabel">Overall trip rating</p>
+      <div class="stars" id="star-rating"><span class="star" data-v="1">★</span><span class="star" data-v="2">★</span><span class="star" data-v="3">★</span><span class="star" data-v="4">★</span><span class="star" data-v="5">★</span></div>
+      <input type="hidden" id="post-rating" value="0">
+      <div id="rating-lbl" style="font-size:13px;color:var(--text3);margin-top:4px;min-height:18px">Tap to rate</div>
+      <p class="slabel">What worked well</p>
+      <div id="works-list"></div>
+      <button class="btn-add-sm" id="btn-add-works">+ add item</button>
+      <p class="slabel">Lessons learnt</p>
+      <div id="lessons-list"></div>
+      <button class="btn-add-sm" id="btn-add-lessons">+ add lesson</button>
+      <p class="slabel">Equipment / tackle failures</p>
+      <div style="display:grid;grid-template-columns:2fr 1fr 28px;gap:8px;margin-bottom:6px"><span class="col-lbl">Item</span><span class="col-lbl">Severity</span><span></span></div>
+      <div id="failure-list"></div>
+      <button class="btn-add-sm" id="btn-add-failure">+ add failure</button>
+      <p class="slabel">Buy or fix before next trip</p>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 28px;gap:8px;margin-bottom:6px"><span class="col-lbl">Item</span><span class="col-lbl">Priority</span><span class="col-lbl">Cost</span><span></span></div>
+      <div id="fix-list"></div>
+      <button class="btn-add-sm" id="btn-add-fix">+ add item</button>
+      <p class="slabel">Additional costs (SGD)</p>
+      <div id="misc-cost-list"></div>
+      <button class="btn-add-sm" id="btn-add-misc">+ add cost</button>
+      <div class="cost-box" style="margin-top:10px">
+        <div class="cost-total-row"><span>Grand total (pre-trip + misc)</span><span id="grand-total">S$ 0.00</span></div>
+      </div>
+      <div class="field" style="margin-top:16px"><label>Post-trip notes</label><textarea id="post-notes" placeholder="Reflections, follow-up actions..."></textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button class="btn-primary" style="margin-top:0" id="btn-save-post">Save Trip</button><button class="btn-secondary" style="margin-bottom:0" id="btn-cancel-post">Cancel</button></div>
+    </div>
+
+    <!-- INSIGHTS -->
+    <div class="section" id="tab-insights" hidden>
+      <div class="stats-grid" id="stats-grid"></div>
+      <div id="insights-body"></div>
+    </div>
+
+  </div><!-- end scroll -->
+
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tb-trips"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>My Trips</button>
+    <button class="tab-btn" id="tb-pre"><svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>Pre-Trip</button>
+    <button class="tab-btn" id="tb-log"><svg viewBox="0 0 24 24"><path d="M20 3s-6 2-11 7c-2.5 2.5-4 5-4 5l-2-2-1 1 3 3c-1 1.5-1.5 3-1.5 3H5s.5-1.5 1.5-2.5L9 20l1-1-2-2s2.5-1.5 5-4c5-5 7-10 7-10z"/></svg>Trip Log</button>
+    <button class="tab-btn" id="tb-post"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Post-Trip</button>
+    <button class="tab-btn" id="tb-insights"><svg viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>Insights</button>
+  </div>
+</div>
+
+<!-- DETAIL VIEW -->
+<div class="detail-view" id="detail-view">
+  <div class="detail-nav">
+    <button id="btn-detail-close" style="background:none;border:none;color:var(--blue);font-size:16px;font-weight:500;cursor:pointer;padding:0;touch-action:manipulation">‹ Back</button>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn-sm-blue" id="btn-detail-share">Share</button>
+      <button class="btn-sm-blue" id="btn-detail-edit">Edit</button>
+      <button class="btn-sm-red" id="btn-detail-delete">Delete</button>
+    </div>
+  </div>
+  <div class="detail-scroll" id="detail-body"></div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="del-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-sheet">
+    <div class="modal-title">Delete trip?</div>
+    <p class="modal-desc">This cannot be undone. Confirm to proceed.</p>
+    <button class="btn-danger" style="margin-top:0" id="btn-del-step1">Confirm — show verification</button>
+    <button class="modal-close">Cancel</button>
+  </div>
+</div>
+<div class="modal-overlay" id="del-verify-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-sheet">
+    <div class="modal-title">Type to confirm deletion</div>
+    <p class="modal-desc">Type the 3 letters shown below to permanently delete this trip:</p>
+    <div id="del-code" style="font-size:36px;font-weight:700;letter-spacing:10px;text-align:center;color:var(--red);margin:16px 0;font-family:monospace"></div>
+    <input type="text" id="del-verify-input" placeholder="Type here" maxlength="3" style="text-align:center;font-size:24px;letter-spacing:8px;font-family:monospace;text-transform:uppercase">
+    <button class="btn-danger" style="margin-top:12px" id="btn-del-final">Delete trip</button>
+    <button class="modal-close">Cancel</button>
+  </div>
+</div>
+<div class="modal-overlay" id="merge-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-sheet">
+    <div class="modal-title" id="merge-title">GPS file matches an existing trip</div>
+    <div id="merge-desc" class="modal-desc"></div>
+    <button class="btn-primary" style="margin-top:0" id="btn-merge">Add as new day to existing trip</button>
+    <button class="btn-secondary" style="margin-top:10px" id="btn-new-trip-tcx">Create as a new separate trip</button>
+    <button class="modal-close">Cancel</button>
+  </div>
+</div>
+<div class="modal-overlay" id="load-setup-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-sheet"><div class="modal-title">Load setups from a previous trip</div><div id="load-setup-opts"></div><button class="modal-close">Cancel</button></div>
+</div>
+<div class="modal-overlay" id="setup-lib-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-sheet"><div class="modal-title">Saved setups</div><div id="setup-lib-opts"></div><button class="modal-close">Cancel</button></div>
+</div>
+<div class="modal-overlay" id="share-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-sheet">
+    <div class="modal-title">Share trip summary</div>
+    <p class="modal-desc">A summary card will be generated and downloaded as a PNG image.</p>
+    <canvas id="share-canvas"></canvas>
+    <div id="share-preview" style="margin-bottom:16px;text-align:center"></div>
+    <button class="btn-primary" style="margin-top:0" id="btn-download-share">Download PNG</button>
+    <button class="modal-close">Cancel</button>
+  </div>
+</div>
+<div class="modal-overlay" id="history-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-sheet">
+    <div class="modal-title">Version history</div>
+    <p class="modal-desc">Previous saved versions. GPS data not stored. Restoring overwrites the current version.</p>
+    <div id="history-opts"></div>
+    <button class="modal-close">Close</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+window.addEventListener('error',e=>{document.getElementById('login').classList.add('show');console.error('App error:',e);});
+window.addEventListener('unhandledrejection',e=>{console.error('Unhandled:',e.reason);});
+</script>
+<script type="module">
+// ── FIREBASE ──────────────────────────────────────────
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import{getAuth,GoogleAuthProvider,signInWithPopup,signOut as fbSignOut,onAuthStateChanged}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import{getFirestore,collection,doc,setDoc,getDocs,deleteDoc}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import{getStorage,ref,uploadBytesResumable,getDownloadURL,deleteObject}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
+
+const FC={apiKey:"AIzaSyB3j9TnY947-ouS07L_lKqLWyjBb5HFn9Q",authDomain:"big-fishing-trip-7c406.firebaseapp.com",projectId:"big-fishing-trip-7c406",storageBucket:"big-fishing-trip-7c406.firebasestorage.app",messagingSenderId:"390683375325",appId:"1:390683375325:web:c510f5d5909bff0a084d34"};
+const fbApp=initializeApp(FC);
+const auth=getAuth(fbApp);
+const db=getFirestore(fbApp);
+const storage=getStorage(fbApp);
+
+// ── CONSTANTS ─────────────────────────────────────────
+const SV=1,AV='0.3.4';
+const TRACK_COLORS=['#185FA5','#1D9E75','#D4860A','#D93025','#7F77DD'];
+const MAX_PTS=300; // coords per track after downsampling
+
+// ── STATE ─────────────────────────────────────────────
+let user=null,trips=[],setupLib=[],compLib=[];
+let detailId=null,editId=null,deleteId=null,pendTCX=null,pendMatchId=null;
+let selectedIds=new Set();
+let lastSetupId='',lastLureId='',lastSpot='';
+let scnt=0,dcnt=0,fcnt=0,lcnt=0,mcnt=0,tcnt=0,ecnt=0,xcnt=0,ccnt=0,mscnt=0,flcnt=0;
+const maps={};
+
+// ── UTILS ─────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const val=id=>$(id)?.value?.trim()||'';
+const fmtDate=d=>{if(!d)return'';return new Date(d+'T00:00:00').toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'2-digit'});};
+const fmtDateLong=d=>{if(!d)return'';return new Date(d+'T00:00:00').toLocaleDateString('en-SG',{weekday:'short',day:'numeric',month:'short',year:'numeric'});};
+const starStr=n=>n?'★'.repeat(n)+'☆'.repeat(5-n):'';
+const numFmt=n=>n?'S$ '+parseFloat(n).toFixed(2):'';
+
+function sync(state,msg){
+  const dot=$('sync-dot'),lbl=$('sync-lbl');
+  if(dot)dot.className='sync-dot'+(state==='ing'?' ing':state==='err'?' err':'');
+  if(lbl)lbl.textContent=msg;
+}
+
+// ── MOON ─────────────────────────────────────────────
+function moonPhase(ds){
+  if(!ds)return'';
+  const d=new Date(ds+'T12:00:00Z'),k=new Date('2000-01-06T18:14:00Z');
+  const p=(((d-k)/86400000)%29.53+29.53)%29.53;
+  if(p<1.85)return'New moon';if(p<7.38)return'Waxing crescent';if(p<11.07)return'First quarter';
+  if(p<14.77)return'Waxing gibbous';if(p<18.46)return'Full moon';if(p<22.15)return'Waning gibbous';
+  if(p<25.84)return'Last quarter';return'Waning crescent';
+}
+const moonEmoji=p=>({'New moon':'🌑','Waxing crescent':'🌒','First quarter':'🌓','Waxing gibbous':'🌔','Full moon':'🌕','Waning gibbous':'🌖','Last quarter':'🌗','Waning crescent':'🌘'}[p]||'');
+
+// ── TRIP STATUS ───────────────────────────────────────
+function tripStatus(t){
+  const today=new Date().toISOString().slice(0,10);
+  const df=t.pre?.dateFrom||'';
+  const hasFish=(t.days||[]).some(d=>(d.fish||[]).length>0||(d.misses||[]).length>0);
+  if(!hasFish&&(!df||df>today))return'pending';
+  return'completed';
+}
+
+// ── AUTH ──────────────────────────────────────────────
+onAuthStateChanged(auth,async u=>{
+  user=u;
+  if(u){
+    $('login').classList.remove('show');
+    $('app').style.display='flex';
+    $('app-ver').textContent=AV;
+    const av=$('nav-avatar');
+    if(u.photoURL)av.innerHTML=`<img src="${u.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    else av.textContent=(u.displayName||u.email||'?')[0].toUpperCase();
+    await loadAll();
+    showTab('trips');
+  } else {
+    $('login').classList.add('show');
+    $('app').style.display='none';
+    trips=[];setupLib=[];compLib=[];
+  }
+});
+
+// ── FIRESTORE HELPERS ─────────────────────────────────
+const col=name=>collection(db,'users',user.uid,name);
+
+// Flatten coords to {lat,lng} objects for Firestore (no nested arrays)
+function flatCoords(tcx){
+  if(!tcx?.coords)return tcx;
+  const coords=downsample(tcx.coords,MAX_PTS);
+  return{...tcx,coords:coords.map(c=>Array.isArray(c)?{lat:c[0],lng:c[1]}:{lat:c.lat,lng:c.lng})};
+}
+// Unflatten coords back to [lat,lng] arrays for Leaflet
+function unflatCoords(tcx){
+  if(!tcx)return tcx;
+  // coords may be a string if something went wrong during save — skip safely
+  if(!tcx.coords||typeof tcx.coords==='string')return{...tcx,coords:[]};
+  return{...tcx,coords:tcx.coords.map(c=>Array.isArray(c)?c:[c.lat,c.lng])};
+}
+// Downsample coords array to maxPts keeping first and last
+function downsample(coords,maxPts){
+  if(!coords||coords.length<=maxPts)return coords;
+  const step=Math.ceil(coords.length/maxPts),out=[];
+  for(let i=0;i<coords.length;i++){
+    if(i===0||i===coords.length-1||i%step===0)out.push(coords[i]);
+  }
+  return out;
+}
+
+// Prepare trip for Firestore: flatten tcxTracks, strip undefined/nested arrays
+function prepForFirestore(t){
+  const prepared={...t,days:(t.days||[]).map(d=>({
+    ...d,
+    tcxTracks:(d.tcxTracks||[]).map(tr=>flatCoords(tr))
+  }))};
+  return JSON.parse(JSON.stringify(prepared,(k,v)=>v===undefined?null:v));
+}
+// Restore trip from Firestore: unflatten tcxTracks, migrate legacy tcx field
+function restoreFromFirestore(data){
+  if(!data.days)return data;
+  return{...data,days:data.days.map(d=>{
+    let tracks=(d.tcxTracks||[]).map(tr=>unflatCoords(tr));
+    if(!tracks.length&&d.tcx?.coords?.length)tracks=[unflatCoords(d.tcx)];
+    // normalise fish — older builds may use null, undefined, or 'catches'
+    const fish=Array.isArray(d.fish)?d.fish:Array.isArray(d.catches)?d.catches:[];
+    const misses=Array.isArray(d.misses)?d.misses:[];
+    return{...d,fish,misses,tcxTracks:tracks};
+  })};
+}
+
+async function loadAll(){
+  sync('ing','Syncing...');
+  try{
+    const[ts,ss,cs]=await Promise.all([getDocs(col('trips')),getDocs(col('setupLibrary')),getDocs(col('companionLibrary'))]);
+    trips=ts.docs.reduce((acc,d)=>{
+      try{acc.push(restoreFromFirestore({...d.data(),id:d.id}));}
+      catch(e){console.warn('Skipped trip',d.id,e);}
+      return acc;
+    },[]);
+    setupLib=ss.docs.map(d=>({...d.data(),id:d.id}));
+    compLib=cs.docs.map(d=>({...d.data(),id:d.id}));
+    sync('ok','Synced · '+trips.length+' trip'+(trips.length!==1?'s':''));
+  }catch(e){sync('err','Sync error');console.error(e);renderTrips();}
+}
+
+async function saveTrip(){
+  if(!user){alert('Please sign in.');return;}
+  const pre=getPre();
+  if(!pre)return;
+  if(!pre.destination&&!pre.dateFrom){alert('Please enter a destination or departure date.');return;}
+  const id=editId||('t'+Date.now());
+  const t={id,schemaVersion:SV,appVersion:AV,savedAt:Date.now(),pre,days:getDays(),notes:val('f-notes'),post:getPost(),photos:tripPhotos,coverPhoto:tripPhotos.find(p=>p.isCover)||tripPhotos[0]||null};
+  // build version history
+  const existing=trips.find(x=>x.id===id);
+  const history=existing?[stripHistory(existing),...(existing.history||[])].slice(0,3):[];
+  const tFull={...t,history};
+  // size check
+  const prepared=prepForFirestore(tFull);
+  const sz=new Blob([JSON.stringify(prepared)]).size;
+  console.log('Doc size:',Math.round(sz/1024)+'KB');
+  if(sz>900000){alert('Warning: this trip document is '+Math.round(sz/1024)+'KB and approaching the 1MB Firestore limit. Consider removing some GPS tracks.');return;}
+  sync('ing','Saving...');
+  try{
+    await setDoc(doc(col('trips'),id),prepared);
+    await saveCompLib(pre.companions||[]);
+    await saveSetupLib(pre.setups||[]);
+    const idx=trips.findIndex(x=>x.id===id);
+    if(idx>-1)trips[idx]=tFull;else trips.unshift(tFull);
+    sync('ok','Saved');editId=null;resetForm();showTab('trips');alert('Trip saved! 🎣');
+  }catch(e){sync('err','Save failed');alert('Save failed: '+e.message);console.error(e);}
+}
+
+function stripHistory(t){
+  const copy=JSON.parse(JSON.stringify(t));
+  delete copy.history;
+  if(copy.days)copy.days=copy.days.map(d=>({...d,tcxTracks:[]}));
+  return copy;
+}
+
+async function saveCompLib(comps){
+  for(const c of comps){
+    if(!c.name)continue;
+    if(compLib.find(x=>x.name.toLowerCase()===c.name.toLowerCase()))continue;
+    const id='c'+Date.now()+Math.random().toString(36).slice(2,5);
+    await setDoc(doc(col('companionLibrary'),id),{id,...c});
+    compLib.push({id,...c});
+  }
+}
+async function saveSetupLib(setups){
+  for(const s of setups){
+    if(!s.rod&&!s.reel)continue;
+    const k=((s.rod||'')+(s.reel||'')).toLowerCase().replace(/\s/g,'');
+    if(setupLib.find(x=>((x.rod||'')+(x.reel||'')).toLowerCase().replace(/\s/g,'')=== k))continue;
+    const id='s'+Date.now()+Math.random().toString(36).slice(2,5);
+    await setDoc(doc(col('setupLibrary'),id),{id,...s});
+    setupLib.push({id,...s});
+  }
+}
+async function doDelete(id){
+  try{await deleteDoc(doc(col('trips'),id));trips=trips.filter(t=>t.id!==id);sync('ok','Deleted');}
+  catch(e){alert('Delete failed: '+e.message);}
+}
+// ── TABS ──────────────────────────────────────────────
+function showTab(name){
+  ['trips','pre','log','post','insights'].forEach(n=>{
+    const s=$('tab-'+n);if(s)s.hidden=(n!==name);
+    const b=$('tb-'+n);if(b)b.classList.toggle('active',n===name);
+  });
+  $('scroll').scrollTop=0;
+  if(name==='trips'){selectedIds=new Set();renderTrips();}
+  if(name==='insights')renderInsights();
+  if(name==='log')setTimeout(rebuildPendingMaps,200);
+}
+
+// ── PRE-TRIP SUB-TABS ─────────────────────────────────
+function showPreTab(name){
+  ['planning','gear'].forEach(n=>{
+    const p=$('pre-'+(n==='planning'?'plan':'gear'));
+    if(p)p.hidden=(n!==name);
+    const b=$('pst-'+n);
+    if(b)b.classList.toggle('active',n===name);
+  });
+}
+
+// ── MODAL ─────────────────────────────────────────────
+const openModal=id=>{const m=$(id);if(m)m.classList.add('open');};
+const closeModal=id=>{const m=$(id);if(m)m.classList.remove('open');};
+const closeAllModals=()=>document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));
+
+// ── STARS ─────────────────────────────────────────────
+function initStars(){
+  document.querySelectorAll('.star').forEach(s=>{
+    s.addEventListener('click',()=>{
+      const v=+s.dataset.v;
+      $('post-rating').value=v;
+      document.querySelectorAll('.star').forEach(x=>x.classList.toggle('on',+x.dataset.v<=v));
+      $('rating-lbl').textContent=['','Poor','Below average','Average','Good','Excellent!'][v]||'';
+    });
+  });
+}
+function setStars(v){
+  $('post-rating').value=v||0;
+  document.querySelectorAll('.star').forEach(x=>x.classList.toggle('on',+x.dataset.v<=(v||0)));
+  $('rating-lbl').textContent=['Tap to rate','Poor','Below average','Average','Good','Excellent!'][v||0]||'Tap to rate';
+}
+
+// ── COMPANIONS ────────────────────────────────────────
+function addCompRow(c={}){
+  ccnt++;
+  const d=document.createElement('div');
+  d.className='comp-row';
+  d.innerHTML=`
+    <div class="ac-wrap">
+      <input type="text" class="cn" placeholder="Name" value="${esc(c.name||'')}" autocomplete="off">
+      <div class="ac-sug"></div>
+    </div>
+    <input type="tel" class="cc" placeholder="Phone / contact" value="${esc(c.contact||'')}">
+    <button class="brm" data-action="rmrow">×</button>`;
+  const ni=d.querySelector('.cn'),sg=d.querySelector('.ac-sug');
+  ni.addEventListener('input',()=>{
+    const q=ni.value.trim().toLowerCase();
+    if(!q){sg.style.display='none';return;}
+    const m=compLib.filter(x=>x.name.toLowerCase().startsWith(q)&&x.name.toLowerCase()!==q);
+    if(!m.length){sg.style.display='none';return;}
+    sg.innerHTML=m.map(x=>`<div class="ac-item" data-name="${esc(x.name)}" data-contact="${esc(x.contact||'')}">${esc(x.name)}${x.contact?`<span style="color:var(--text3);font-size:12px;margin-left:8px">${esc(x.contact)}</span>`:''}</div>`).join('');
+    sg.querySelectorAll('.ac-item').forEach(item=>{
+      item.addEventListener('mousedown',e=>e.preventDefault());
+      item.addEventListener('click',()=>{ni.value=item.dataset.name;d.querySelector('.cc').value=item.dataset.contact;sg.style.display='none';});
+    });
+    sg.style.display='block';
+  });
+  ni.addEventListener('blur',()=>setTimeout(()=>{sg.style.display='none';},150));
+  $('companion-list').appendChild(d);
+}
+function getComps(){
+  return[...$('companion-list').querySelectorAll('.comp-row')].map(r=>({
+    name:r.querySelector('.cn')?.value?.trim()||'',
+    contact:r.querySelector('.cc')?.value?.trim()||''
+  })).filter(c=>c.name);
+}
+
+// ── COST CALCULATION ──────────────────────────────────
+function calcPreCostTotal(){
+  const c=parseFloat($('cost-charter')?.value||0)||0;
+  const tr=parseFloat($('cost-transport')?.value||0)||0;
+  const a=parseFloat($('cost-accom')?.value||0)||0;
+  const tot=c+tr+a;
+  const el=$('cost-total');if(el)el.value=tot>0?'S$ '+tot.toFixed(2):'';
+  calcGrandTotal();
+}
+function calcGrandTotal(){
+  const preCosts=getPre(true)?.costs||{};
+  const pre=(preCosts.charter||0)+(preCosts.transport||0)+(preCosts.accom||0);
+  const misc=getMiscCosts().reduce((a,m)=>a+m.amount,0);
+  const el=$('grand-total');if(el)el.textContent='S$ '+(pre+misc).toFixed(2);
+}
+function calcShopTotals(){
+  let all=0,bought=0;
+  $('shop-list').querySelectorAll('.shop-row').forEach(r=>{
+    const amt=parseFloat(r.querySelector('.shop-cost')?.value||0)||0;
+    all+=amt;if(r.querySelector('.shop-cb')?.checked)bought+=amt;
+  });
+  const ta=$('shop-total-all'),tb=$('shop-total-bought');
+  if(ta)ta.textContent='S$ '+all.toFixed(2);
+  if(tb)tb.textContent='S$ '+bought.toFixed(2);
+}
+
+// ── TASKS ─────────────────────────────────────────────
+function addTask(t={}){
+  tcnt++;
+  const d=document.createElement('div');d.className='chk-row'+(t.done?' done':'');
+  d.innerHTML=`<input type="checkbox" class="task-cb" ${t.done?'checked':''}><input type="text" class="task-txt" placeholder="Task..." value="${esc(t.text||'')}"><button class="brm" data-action="rmrow">×</button>`;
+  d.querySelector('.task-cb').addEventListener('change',function(){d.classList.toggle('done',this.checked);});
+  $('task-list').appendChild(d);
+}
+function getTasks(){
+  return[...$('task-list').querySelectorAll('.chk-row')].map(r=>({text:r.querySelector('.task-txt')?.value?.trim()||'',done:r.querySelector('.task-cb')?.checked||false})).filter(t=>t.text);
+}
+
+// ── SHOPPING LIST ─────────────────────────────────────
+function addShopRow(e={}){
+  ecnt++;
+  const d=document.createElement('div');d.className='shop-row';
+  d.innerHTML=`<input type="checkbox" class="shop-cb" ${e.bought?'checked':''}><input type="text" class="shop-item" placeholder="Item" value="${esc(e.item||'')}" style="${e.bought?'text-decoration:line-through;color:var(--text3)':''}"><input type="text" class="shop-src" placeholder="e.g. Tackle One" value="${esc(e.source||'')}"><input type="number" class="shop-cost" placeholder="$" min="0" step="0.01" value="${esc(e.cost||'')}"><button class="brm" data-action="rmrow">×</button>`;
+  const cb=d.querySelector('.shop-cb'),item=d.querySelector('.shop-item');
+  cb.addEventListener('change',()=>{item.style.cssText=cb.checked?'text-decoration:line-through;color:var(--text3)':'';sortShop();calcShopTotals();});
+  d.querySelector('.shop-cost').addEventListener('input',calcShopTotals);
+  $('shop-list').appendChild(d);calcShopTotals();
+}
+function sortShop(){
+  const c=$('shop-list');
+  [...c.querySelectorAll('.shop-row')].sort((a,b)=>(a.querySelector('.shop-cb').checked?1:0)-(b.querySelector('.shop-cb').checked?1:0)).forEach(r=>c.appendChild(r));
+  calcShopTotals();
+}
+function getShop(){
+  return[...$('shop-list').querySelectorAll('.shop-row')].map(r=>({bought:r.querySelector('.shop-cb')?.checked||false,item:r.querySelector('.shop-item')?.value?.trim()||'',source:r.querySelector('.shop-src')?.value?.trim()||'',cost:r.querySelector('.shop-cost')?.value?.trim()||''})).filter(e=>e.item);
+}
+
+// ── BULLETS ───────────────────────────────────────────
+function addBullet(cid,v=''){
+  const c=$(cid),d=document.createElement('div');d.className='bullet-row';
+  const isW=cid.includes('works');
+  d.innerHTML=`<span style="color:${isW?'var(--green)':'var(--amber)'};width:20px;text-align:center;flex-shrink:0">${isW?'✓':'→'}</span><input type="text" placeholder="${isW?'What worked well...':'Lesson learnt...'}" value="${esc(v)}"><button class="brm" data-action="rmrow">×</button>`;
+  c.appendChild(d);
+}
+function getBullets(cid){return[...$(cid).querySelectorAll('.bullet-row')].map(r=>r.querySelector('input')?.value?.trim()||'').filter(Boolean);}
+
+// ── FAILURES ──────────────────────────────────────────
+function addFailure(f={}){
+  flcnt++;const d=document.createElement('div');d.className='row3';
+  d.innerHTML=`<input type="text" placeholder="e.g. Drag seized, hook straightened" value="${esc(f.item||'')}"><select class="fs13"><option value="">Severity</option><option ${f.severity==='Minor'?'selected':''}>Minor</option><option ${f.severity==='Major'?'selected':''}>Major</option><option ${f.severity==='Trip-ending'?'selected':''}>Trip-ending</option></select><button class="brm" data-action="rmrow">×</button>`;
+  $('failure-list').appendChild(d);
+}
+function getFailures(){return[...$('failure-list').querySelectorAll('.row3')].map(r=>({item:r.querySelector('input')?.value?.trim()||'',severity:r.querySelector('select')?.value||''})).filter(f=>f.item);}
+
+// ── FIX LIST ──────────────────────────────────────────
+function addFix(f={}){
+  xcnt++;const d=document.createElement('div');d.className='row4';
+  d.innerHTML=`<input type="text" placeholder="Item / action" value="${esc(f.item||'')}"><select class="fs13"><option value="">Priority</option><option ${f.priority==='High'?'selected':''}>High</option><option ${f.priority==='Medium'?'selected':''}>Medium</option><option ${f.priority==='Low'?'selected':''}>Low</option></select><input type="number" placeholder="$" min="0" step="0.01" value="${esc(f.cost||'')}"><button class="brm" data-action="rmrow">×</button>`;
+  $('fix-list').appendChild(d);
+}
+function getFixes(){return[...$('fix-list').querySelectorAll('.row4')].map(r=>{const i=r.querySelectorAll('input'),s=r.querySelector('select');return{item:i[0]?.value?.trim()||'',priority:s?.value||'',cost:i[1]?.value?.trim()||''};}).filter(f=>f.item);}
+
+// ── MISC COSTS ────────────────────────────────────────
+function addMiscCost(m={}){
+  const d=document.createElement('div');d.className='row3';d.style.marginBottom='8px';
+  d.innerHTML=`<input type="text" class="mc-lbl" placeholder="e.g. Fishing licence, meals" value="${esc(m.label||'')}"><input type="number" class="mc-amt" placeholder="0.00" min="0" step="0.01" value="${esc(m.amount||'')}"><button class="brm" data-action="rmrow">×</button>`;
+  d.querySelector('.mc-amt').addEventListener('input',calcGrandTotal);
+  $('misc-cost-list').appendChild(d);
+}
+function getMiscCosts(){
+  return[...$('misc-cost-list').querySelectorAll('.row3')].map(r=>({label:r.querySelector('.mc-lbl')?.value?.trim()||'',amount:parseFloat(r.querySelector('.mc-amt')?.value||0)||0})).filter(m=>m.label||m.amount);
+}
+
+// ── LURES ─────────────────────────────────────────────
+function addLure(sid,l={}){
+  const lid='l'+(lcnt++);
+  const c=$('lures-'+sid);if(!c)return;
+  const d=document.createElement('div');d.className='lure-row';d.dataset.lid=lid;
+  d.innerHTML=`<input class="l-name" type="text" placeholder="Name" value="${esc(l.name||'')}"><input type="text" placeholder="Type/colour" value="${esc(l.type||'')}"><input type="text" placeholder="Weight" value="${esc(l.weight||'')}"><input type="text" placeholder="Hook" value="${esc(l.hook||'')}"><button class="brm" data-action="rmrow">×</button>`;
+  c.appendChild(d);
+}
+function getLures(el){
+  return[...el.querySelectorAll('.lure-row')].map(r=>({lid:r.dataset.lid,name:r.querySelector('.l-name')?.value?.trim()||'',type:r.querySelectorAll('input')[1]?.value?.trim()||'',weight:r.querySelectorAll('input')[2]?.value?.trim()||'',hook:r.querySelectorAll('input')[3]?.value?.trim()||''})).filter(l=>l.name);
+}
+function setupsForDropdown(){
+  return[...document.querySelectorAll('.setup-card')].map((el,i)=>({
+    id:el.dataset.sid,
+    label:'#'+(i+1)+' '+(el.querySelector('.s-rod')?.value?.trim()||'').split(' ').slice(0,3).join(' ')
+  }));
+}
+function luresForSetup(sid){
+  const el=document.querySelector(`.setup-card[data-sid="${sid}"]`);
+  return el?getLures(el):[];
+}
+
+// ── SETUPS ────────────────────────────────────────────
+function addSetup(s={}){
+  const sid='s'+(scnt++);
+  const d=document.createElement('div');d.className='setup-card';d.id='setup-'+sid;d.dataset.sid=sid;
+  const num=document.querySelectorAll('.setup-card').length+1;
+  d.innerHTML=`
+    <button class="brm abs-rm" data-action="rmsetup" data-sid="${sid}">×</button>
+    <div class="setup-num snum">${num}</div>
+    <div class="fg2">
+      <div class="field"><label>Rod</label><input class="s-rod" type="text" placeholder="e.g. Shimano Grappler BB PE3-5" value="${esc(s.rod||'')}"></div>
+      <div class="field"><label>Reel</label><input class="s-reel" type="text" placeholder="e.g. Daiwa Saltiga 4000" value="${esc(s.reel||'')}"></div>
+    </div>
+    <div class="fg2">
+      <div class="field"><label>Line</label><input class="s-line" type="text" placeholder="e.g. PE4 braid 300m" value="${esc(s.line||'')}"></div>
+      <div class="field"><label>Leader</label><input class="s-leader" type="text" placeholder="e.g. 80lb fluoro 2m" value="${esc(s.leader||'')}"></div>
+    </div>
+    <div class="fg2">
+      <div class="field"><label>Lure weight range</label><input class="s-lwt" type="text" placeholder="e.g. 80–200g" value="${esc(s.lureWeightRange||'')}"></div>
+      <div class="fg2" style="gap:6px">
+        <div class="field" style="margin:0"><label>Solid ring</label><input class="s-solid" type="text" placeholder="#5" value="${esc(s.solidRing||'')}"></div>
+        <div class="field" style="margin:0"><label>Split ring</label><input class="s-split" type="text" placeholder="#6" value="${esc(s.splitRing||'')}"></div>
+      </div>
+    </div>
+    <div class="lure-section">
+      <div class="slabel" style="margin-top:8px">Lures / baits</div>
+      <div class="lure-hdr"><span>Name</span><span>Type</span><span>Weight</span><span>Hook</span><span></span></div>
+      <div id="lures-${sid}"></div>
+      <button class="btn-add-sm" data-action="addlure" data-sid="${sid}">+ add lure / bait</button>
+    </div>`;
+  $('setup-list').appendChild(d);
+  renumSetups();
+  if(s.lures?.length)s.lures.forEach(l=>addLure(sid,l));else addLure(sid);
+}
+function renumSetups(){document.querySelectorAll('.setup-card .snum').forEach((el,i)=>el.textContent=i+1);}
+function getSetups(){
+  return[...document.querySelectorAll('.setup-card')].map((el,i)=>({
+    id:el.dataset.sid,num:i+1,
+    rod:el.querySelector('.s-rod')?.value?.trim()||'',
+    reel:el.querySelector('.s-reel')?.value?.trim()||'',
+    line:el.querySelector('.s-line')?.value?.trim()||'',
+    leader:el.querySelector('.s-leader')?.value?.trim()||'',
+    lureWeightRange:el.querySelector('.s-lwt')?.value?.trim()||'',
+    solidRing:el.querySelector('.s-solid')?.value?.trim()||'',
+    splitRing:el.querySelector('.s-split')?.value?.trim()||'',
+    lures:getLures(el)
+  }));
+}
+// ── TCX PARSING ───────────────────────────────────────
+function haversine(a,b,c,d){
+  const R=6371,dL=(c-a)*Math.PI/180,dO=(d-b)*Math.PI/180;
+  const x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dO/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+function sgTime(d){if(!d)return'';const sg=new Date(d.getTime()+8*3600000);return sg.toISOString().slice(11,16);}
+
+function parseTCX(xml){
+  try{
+    const doc=new DOMParser().parseFromString(xml,'application/xml');
+    const pts=[...doc.querySelectorAll('Trackpoint')];
+    if(!pts.length)return null;
+    const coords=[],times=[];
+    pts.forEach(p=>{
+      const la=p.querySelector('LatitudeDegrees')?.textContent;
+      const lo=p.querySelector('LongitudeDegrees')?.textContent;
+      const t=p.querySelector('Time')?.textContent;
+      if(la&&lo){coords.push([parseFloat(la),parseFloat(lo)]);if(t)times.push(new Date(t));}
+    });
+    if(!coords.length)return null;
+    let dist=0;
+    for(let i=1;i<coords.length;i++)dist+=haversine(coords[i-1][0],coords[i-1][1],coords[i][0],coords[i][1]);
+    const st=times[0],et=times[times.length-1];
+    const durHrs=st&&et?((et-st)/3600000).toFixed(1):'';
+    let startDate='';
+    if(st){const sg=new Date(st.getTime()+8*3600000);startDate=sg.toISOString().slice(0,10);}
+    else{const aid=doc.querySelector('Activity > Id')?.textContent;if(aid)startDate=aid.slice(0,10);}
+    // parse Garmin fishing catch events
+    const catches=[];
+    [...doc.querySelectorAll('CoursePoint')].forEach(cp=>{
+      const type=(cp.querySelector('PointType')?.textContent||'').toLowerCase();
+      if(type.includes('fish')||type==='generic'){
+        const t=cp.querySelector('Time')?.textContent;
+        const la=cp.querySelector('LatitudeDegrees')?.textContent;
+        const lo=cp.querySelector('LongitudeDegrees')?.textContent;
+        if(t&&la&&lo)catches.push({time:sgTime(new Date(t)),lat:parseFloat(la),lng:parseFloat(lo)});
+      }
+    });
+    [...doc.querySelectorAll('Event')].forEach(ev=>{
+      const type=(ev.querySelector('EventType')?.textContent||ev.querySelector('Value')?.textContent||'').toLowerCase();
+      if(type.includes('fish')){
+        const t=ev.querySelector('Time')?.textContent;
+        if(t){
+          const evT=new Date(t);let near=null,md=Infinity;
+          pts.forEach(p=>{const pt=p.querySelector('Time')?.textContent;if(pt){const df=Math.abs(new Date(pt)-evT);if(df<md){md=df;near=p;}}});
+          const la=near?.querySelector('LatitudeDegrees')?.textContent;
+          const lo=near?.querySelector('LongitudeDegrees')?.textContent;
+          if(la&&lo)catches.push({time:sgTime(evT),lat:parseFloat(la),lng:parseFloat(lo)});
+        }
+      }
+    });
+    return{coords,distanceKm:dist.toFixed(2),pointCount:coords.length,startDate,startTimeLocal:sgTime(st),endTimeLocal:sgTime(et),durationHrs:durHrs,catches};
+  }catch(e){console.error('TCX parse error:',e);return null;}
+}
+
+// ── MAP BUILDING ──────────────────────────────────────
+function buildMap(mapId,tcxData,catchMarkers,color){
+  const el=$(mapId);if(!el||!tcxData?.coords?.length)return;
+  if(maps[mapId]){try{maps[mapId].remove();}catch(e){}delete maps[mapId];}
+  // coords must be [[lat,lng]] for Leaflet
+  const coords=tcxData.coords.map(c=>Array.isArray(c)?c:[c.lat,c.lng]);
+  const lineColor=color||TRACK_COLORS[0];
+  const map=L.map(mapId,{zoomControl:true,scrollWheelZoom:false});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'OSM',maxZoom:18}).addTo(map);
+  const poly=L.polyline(coords,{color:lineColor,weight:3,opacity:.85}).addTo(map);
+  const mkIcon=(bg,txt)=>L.divIcon({html:`<div style="width:${txt?18:12}px;height:${txt?18:12}px;background:${bg};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff">${txt||''}</div>`,className:'',iconAnchor:[txt?9:6,txt?9:6]});
+  L.marker(coords[0],{icon:mkIcon('#1D9E75')}).addTo(map).bindPopup('Start');
+  L.marker(coords[coords.length-1],{icon:mkIcon('#D93025')}).addTo(map).bindPopup('End');
+  (catchMarkers||[]).forEach((c,i)=>{
+    if(c.lat&&c.lng)L.marker([c.lat,c.lng],{icon:mkIcon('#D4860A',i+1)}).addTo(map).bindPopup((c.species||'Catch '+(i+1))+(c.time?' @ '+c.time:''));
+  });
+  map.fitBounds(poly.getBounds(),{padding:[16,16]});
+  maps[mapId]=map;
+}
+function tryBuildMap(mapId,tcxData,catchMarkers,color,attempts=10){
+  const el=$(mapId);if(!el)return;
+  if(el.offsetWidth>0){buildMap(mapId,tcxData,catchMarkers,color);}
+  else if(attempts>0){setTimeout(()=>tryBuildMap(mapId,tcxData,catchMarkers,color,attempts-1),200);}
+}
+function rebuildPendingMaps(){
+  document.querySelectorAll('.map-box').forEach(el=>{
+    if(el.id&&!maps[el.id]&&el.offsetWidth>0){
+      // find the day this map belongs to
+      const m=el.id.match(/^map-d(\w+)-(\d+)$/);
+      if(m){
+        const did=m[1],ti=+m[2];
+        const dayEl=$('day-'+did);
+        if(dayEl?.dataset?.tcxTracks){
+          try{
+            const tracks=JSON.parse(dayEl.dataset.tcxTracks);
+            if(tracks[ti])buildMap(el.id,tracks[ti],tracks[ti].catches||[],TRACK_COLORS[ti%TRACK_COLORS.length]);
+          }catch(e){}
+        }
+      }
+    }
+  });
+}
+
+// Render all TCX track chips + maps for a day
+function renderDayTracks(did,tracks){
+  const c=$('tcx-'+did);if(!c)return;
+  // clean up old maps
+  Object.keys(maps).filter(k=>k.startsWith('map-d'+did+'-')).forEach(k=>{try{maps[k].remove();}catch(e){}delete maps[k];});
+  if(!tracks||!tracks.length){c.innerHTML='';return;}
+  // store tracks for rebuildPendingMaps
+  const dayEl=$('day-'+did);
+  if(dayEl)dayEl.dataset.tcxTracks=JSON.stringify(tracks.map(t=>flatCoords(t)));
+  c.innerHTML=tracks.map((t,i)=>{
+    const color=TRACK_COLORS[i%TRACK_COLORS.length];
+    const mapId=`map-d${did}-${i}`;
+    const timeInfo=(t.startTimeLocal||t.endTimeLocal)?`<span class="map-time">${t.startTimeLocal||'?'} – ${t.endTimeLocal||'?'} · ${t.distanceKm}km · ${t.pointCount} pts</span>`:`<span class="map-time">${t.distanceKm}km</span>`;
+    return`<div style="margin-bottom:${i<tracks.length-1?12:0}px">
+      <div class="tcx-chip" style="border-color:${color};color:${color};background:${color}15">
+        <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0"></div>
+        <span class="tcx-chip-name">${esc(t.fileName||'Track '+(i+1))}</span>
+        ${timeInfo}
+        <button class="brm-inline" data-action="rmtrack" data-did="${did}" data-tidx="${i}">Remove</button>
+      </div>
+      <div id="${mapId}" class="map-box"></div>
+    </div>`;
+  }).join('');
+  setTimeout(()=>{
+    tracks.forEach((t,i)=>{
+      tryBuildMap(`map-d${did}-${i}`,t,t.catches||[],TRACK_COLORS[i%TRACK_COLORS.length]);
+    });
+  },150);
+}
+
+// ── CATCH ROWS ────────────────────────────────────────
+function addCatch(did,f={}){
+  const fid='f'+(fcnt++);
+  const c=$('fish-list-'+did);if(!c)return;
+  const d=document.createElement('div');d.className='catch-card';d.id='crow-'+fid;d.dataset.fid=fid;
+  const defSid=f.setupId||lastSetupId;
+  const defLid=f.lureLid||lastLureId;
+  const defSpot=f.spot||lastSpot||'';
+  const setups=setupsForDropdown();
+  const sOpts='<option value="">— rod & reel —</option>'+setups.map(s=>`<option value="${s.id}" ${defSid===s.id?'selected':''}>${esc(s.label)}</option>`).join('');
+  d.innerHTML=`
+    <button class="brm abs-rm" data-action="rmrow">×</button>
+    <div class="fg2">
+      <div class="field"><label>Species</label>
+        <div class="ac-wrap"><input type="text" class="c-sp" placeholder="e.g. GT, Grouper" value="${esc(f.species||'')}" autocomplete="off"><div class="ac-sug"></div></div>
+      </div>
+      <div class="field"><label>Spot</label><input type="text" class="c-spot" placeholder="e.g. South Ledge" value="${esc(defSpot)}"></div>
+    </div>
+    <div class="fg2">
+      <div class="field"><label>Time</label><input type="time" class="c-time" value="${f.time||''}"></div>
+      <div class="field"><label>Rod & reel setup</label><select class="c-setup">${sOpts}</select></div>
+    </div>
+    <div class="fg2">
+      <div class="field"><label>Lure / bait</label>
+        <div style="display:flex;gap:6px">
+          <select class="c-lure" style="flex:1;font-size:13px"><option value="">— lure —</option></select>
+          <button class="btn-add-sm" style="margin:0;white-space:nowrap" data-action="newlure" data-fid="${fid}">+ new</button>
+        </div>
+      </div>
+      <div class="field"><label>Length (cm)</label><input type="number" class="c-len" placeholder="cm" value="${f.length||''}" min="0"></div>
+    </div>
+    <div class="fg2">
+      <div class="field"><label>Weight (kg)</label><input type="number" class="c-wt" placeholder="kg" value="${f.weight||''}" min="0" step="0.1"></div>
+      <div></div>
+    </div>`;
+  // populate lure dropdown
+  const setupSel=d.querySelector('.c-setup');
+  const lureSel=d.querySelector('.c-lure');
+  function populateLures(sid,selLid){
+    const lures=luresForSetup(sid);
+    lureSel.innerHTML='<option value="">— lure —</option>'+lures.map(l=>`<option value="${l.lid}" ${selLid===l.lid?'selected':''}>${esc(l.name)}</option>`).join('');
+  }
+  if(defSid)populateLures(defSid,defLid);
+  setupSel.addEventListener('change',()=>{populateLures(setupSel.value,'');lastSetupId=setupSel.value;lastLureId='';});
+  lureSel.addEventListener('change',()=>{lastSetupId=setupSel.value;lastLureId=lureSel.value;});
+  d.querySelector('.c-spot').addEventListener('input',function(){lastSpot=this.value;});
+  // species autocomplete
+  const spInput=d.querySelector('.c-sp'),spSug=d.querySelector('.ac-sug');
+  spInput.addEventListener('input',()=>{
+    const q=spInput.value.trim().toLowerCase();
+    if(!q){spSug.style.display='none';return;}
+    const allSp=[...new Set(trips.flatMap(t=>(t.days||[]).flatMap(d=>(d.fish||[]).map(f=>f.species).filter(Boolean))))];
+    const m=allSp.filter(s=>s.toLowerCase().startsWith(q)&&s.toLowerCase()!==q);
+    if(!m.length){spSug.style.display='none';return;}
+    spSug.innerHTML=m.map(s=>`<div class="ac-item">${esc(s)}</div>`).join('');
+    spSug.querySelectorAll('.ac-item').forEach(item=>{
+      item.addEventListener('mousedown',e=>e.preventDefault());
+      item.addEventListener('click',()=>{spInput.value=item.textContent;spSug.style.display='none';});
+    });
+    spSug.style.display='block';
+  });
+  spInput.addEventListener('blur',()=>setTimeout(()=>{spSug.style.display='none';},150));
+  // add catch photo section
+  const photoSection=document.createElement('div');
+  photoSection.style.cssText='margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border)';
+  photoSection.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Catch photos (max 2)</span>
+      <label class="btn-add-sm" id="cphoto-btn-${fid}" style="margin:0;cursor:pointer">
+        + photo
+        <input type="file" accept="image/*" style="display:none" data-action="uploadcatchphoto" data-fid="${fid}">
+      </label>
+    </div>
+    <div id="cphoto-${fid}" class="photo-grid" style="grid-template-columns:repeat(2,1fr)"></div>`;
+  try{d.appendChild(photoSection);}catch(pe){console.warn('Photo section append failed:',pe);}
+  c.appendChild(d);
+  // restore existing catch photos if editing
+  try{
+    if(f.photos?.length){catchPhotos[fid]=f.photos.slice();renderCatchPhotos(fid);}
+  }catch(pe){console.warn('Photo restore failed:',pe);}
+}
+function getFish(did){
+  const c=$('fish-list-'+did);if(!c)return[];
+  return[...c.querySelectorAll('.catch-card')].map(r=>{
+    const fid=r.dataset.fid;
+    return{
+      fid,
+      species:r.querySelector('.c-sp')?.value?.trim()||'',
+      spot:r.querySelector('.c-spot')?.value?.trim()||'',
+      time:r.querySelector('.c-time')?.value||'',
+      setupId:r.querySelector('.c-setup')?.value||'',
+      lureLid:r.querySelector('.c-lure')?.value||'',
+      length:r.querySelector('.c-len')?.value||'',
+      weight:r.querySelector('.c-wt')?.value||'',
+      photos:catchPhotos[fid]||[]
+    };
+  }).filter(f=>f.species);
+}
+
+// ── MISS ROWS ─────────────────────────────────────────
+function addMiss(did,m={}){
+  mscnt++;
+  const c=$('miss-list-'+did);if(!c)return;
+  const defSid=m.setupId||lastSetupId;
+  const defLid=m.lureLid||lastLureId;
+  const setups=setupsForDropdown();
+  const sOpts='<option value="">— rod & reel —</option>'+setups.map(s=>`<option value="${s.id}" ${defSid===s.id?'selected':''}>${esc(s.label)}</option>`).join('');
+  const d=document.createElement('div');d.className='miss-card';
+  d.innerHTML=`
+    <button class="brm abs-rm" data-action="rmrow">×</button>
+    <div class="fg2">
+      <div class="field"><label>Species (if known)</label><input type="text" class="m-sp" placeholder="e.g. GT" value="${esc(m.species||'')}"></div>
+      <div class="field"><label>Spot</label><input type="text" class="m-spot" placeholder="e.g. Reef edge" value="${esc(m.spot||lastSpot||'')}"></div>
+    </div>
+    <div class="fg2">
+      <div class="field"><label>Time</label><input type="time" class="m-time" value="${m.time||''}"></div>
+      <div class="field"><label>Miss type</label>
+        <select class="m-type fs13">
+          <option value="">Select</option>
+          <option ${m.type==='Bust off'?'selected':''}>Bust off</option>
+          <option ${m.type==='Reefed'?'selected':''}>Reefed</option>
+          <option ${m.type==='Jumped boat side'?'selected':''}>Jumped boat side</option>
+          <option ${m.type==='Dropped lure'?'selected':''}>Dropped lure</option>
+          <option ${m.type==='No hook up'?'selected':''}>No hook up</option>
+          <option ${m.type==='Other'?'selected':''}>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg2">
+      <div class="field"><label>Setup</label><select class="m-setup">${sOpts}</select></div>
+      <div class="field"><label>Lure</label><select class="m-lure fs13"><option value="">— lure —</option></select></div>
+    </div>`;
+  const ms=d.querySelector('.m-setup'),ml=d.querySelector('.m-lure');
+  function popML(sid,lid){const lures=luresForSetup(sid);ml.innerHTML='<option value="">— lure —</option>'+lures.map(l=>`<option value="${l.lid}" ${lid===l.lid?'selected':''}>${esc(l.name)}</option>`).join('');}
+  if(defSid)popML(defSid,defLid);
+  ms.addEventListener('change',()=>popML(ms.value,''));
+  c.appendChild(d);
+}
+function getMisses(did){
+  const c=$('miss-list-'+did);if(!c)return[];
+  return[...c.querySelectorAll('.miss-card')].map(r=>({
+    species:r.querySelector('.m-sp')?.value?.trim()||'',
+    spot:r.querySelector('.m-spot')?.value?.trim()||'',
+    time:r.querySelector('.m-time')?.value||'',
+    type:r.querySelector('.m-type')?.value||'',
+    setupId:r.querySelector('.m-setup')?.value||'',
+    lureLid:r.querySelector('.m-lure')?.value||''
+  })).filter(m=>m.type||m.species);
+}
+
+// ── FISHING DAYS ──────────────────────────────────────
+function addDay(d={}){
+  const did='d'+(dcnt++);
+  console.log('[addDay] date=',d.date,'fish=',d.fish?.length,'tcxTracks=',d.tcxTracks?.length,'did=',did);
+  if(d.date===undefined)console.trace('[addDay] called with undefined data - stack trace:');
+  const num=document.querySelectorAll('.day-card').length+1;
+  const mp=d.moonPhase||(d.date?moonPhase(d.date):'');
+  const el=document.createElement('div');el.className='day-card';el.id='day-'+did;el.dataset.did=did;
+  const flId='fl-'+did,mlId='ml-'+did,txId='tcx-'+did;
+  el.innerHTML=`
+    <div class="day-hdr">
+      <div class="day-badge dnum">Day ${num}</div>
+      <button class="brm" data-action="rmday" data-did="${did}">×</button>
+    </div>
+    <div class="fg2">
+      <div class="field"><label>Date</label><input class="d-date" type="date" value="${d.date||''}"></div>
+      <div class="field"><label>Location / Spot</label><input class="d-loc" type="text" placeholder="e.g. South Ledge" value="${esc(d.location||'')}"></div>
+    </div>
+    <div class="fg2">
+      <div class="field"><label>High tide 1</label><input class="d-ht1" type="time" value="${d.highTide||''}"></div>
+      <div class="field"><label>High tide 2</label><input class="d-ht2" type="time" value="${d.highTide2||''}"></div>
+    </div>
+    <div class="fg2">
+      <div class="field"><label>Moon phase (auto)</label><input class="d-moon" type="text" value="${esc(mp)}" readonly class="readonly-field"></div>
+      <div class="field"><label>Tide during fishing</label>
+        <select class="d-tide">
+          <option value="">Select</option>
+          <option ${d.tide==='Incoming'?'selected':''}>Incoming</option>
+          <option ${d.tide==='High slack'?'selected':''}>High slack</option>
+          <option ${d.tide==='Outgoing'?'selected':''}>Outgoing</option>
+          <option ${d.tide==='Low slack'?'selected':''}>Low slack</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg2">
+      <div class="field"><label>Weather</label><input class="d-weather" type="text" placeholder="e.g. Light NE wind, small chop" value="${esc(d.weather||'')}"></div>
+      <div class="field"><label>Duration (hrs)</label><input class="d-dur" type="number" placeholder="e.g. 6" min="0.5" step="0.5" value="${d.duration||''}"></div>
+    </div>
+    <div class="slabel" style="margin-top:12px">🐟 Fish caught</div>
+    <div id="${flId}"></div>
+    <button class="btn-add-sm" data-action="addcatch" data-did="${did}">+ add catch</button>
+    <div class="slabel" style="margin-top:14px">❌ Misses</div>
+    <div id="${mlId}"></div>
+    <button class="btn-add-sm" data-action="addmiss" data-did="${did}">+ add miss</button>
+    <div class="tcx-wrap">
+      <div class="slabel" style="margin-top:0;border:none;margin-bottom:6px">GPS Tracks (TCX from Garmin)</div>
+      <div id="${txId}"></div>
+      <label class="tcx-upload-btn">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        + Upload .tcx file
+        <input type="file" accept=".tcx" style="display:none" data-action="uploadtcx" data-did="${did}">
+      </label>
+    </div>
+    <div class="field" style="margin-top:12px"><label>Day notes</label><textarea class="d-notes" placeholder="What happened this day?">${esc(d.notes||'')}</textarea></div>`;
+
+  el.querySelector('.d-date').addEventListener('change',function(){el.querySelector('.d-moon').value=moonPhase(this.value);});
+  $('day-list').appendChild(el);
+  renumDays();
+  // Normalise fish array — older trips may store as undefined or use 'catches' key
+  const fishList=Array.isArray(d.fish)?d.fish:Array.isArray(d.catches)?d.catches:[];
+  console.log('[addDay] fishList length=',fishList.length,'for did=',did);
+  if(fishList.length){
+    fishList.forEach((f,fi)=>{
+      try{addCatch(did,f);console.log('[addDay] catch',fi,'ok:',f.species);}
+      catch(e){console.warn('[addDay] catch',fi,'failed:',e);}
+    });
+  } else addCatch(did);
+  if(d.misses?.length){
+    d.misses.forEach(m=>{
+      try{addMiss(did,m);}
+      catch(e){console.warn('Failed to restore miss:',m,e);}
+    });
+  }
+  // restore TCX tracks
+  const tracks=d.tcxTracks||[];
+  if(tracks.length){
+    console.log('[addDay] rendering',tracks.length,'tracks for did=',did);
+    try{renderDayTracks(did,tracks);console.log('[addDay] renderDayTracks ok');}
+    catch(e){console.warn('[addDay] renderDayTracks failed:',e);}
+  }
+}
+function renumDays(){document.querySelectorAll('.day-card .dnum').forEach((el,i)=>el.textContent='Day '+(i+1));}
+function getDayTracks(did){
+  const el=$('day-'+did);if(!el)return[];
+  try{return JSON.parse(el.dataset.tcxTracks||'[]');}catch(e){return[];}
+}
+function getDays(){
+  return[...document.querySelectorAll('.day-card')].map(el=>{
+    const did=el.dataset.did;
+    return{
+      date:el.querySelector('.d-date')?.value||'',
+      location:el.querySelector('.d-loc')?.value?.trim()||'',
+      highTide:el.querySelector('.d-ht1')?.value||'',
+      highTide2:el.querySelector('.d-ht2')?.value||'',
+      moonPhase:el.querySelector('.d-moon')?.value||'',
+      weather:el.querySelector('.d-weather')?.value?.trim()||'',
+      tide:el.querySelector('.d-tide')?.value||'',
+      duration:el.querySelector('.d-dur')?.value||'',
+      notes:el.querySelector('.d-notes')?.value?.trim()||'',
+      fish:getFish(did),misses:getMisses(did),
+      tcxTracks:getDayTracks(did)
+    };
+  });
+}
+
+// Handle TCX upload for a day
+function handleDayTCX(file,did){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const data=parseTCX(e.target.result);
+    if(!data?.coords?.length){alert('Could not parse TCX file.');return;}
+    data.fileName=file.name;
+    const existing=getDayTracks(did);
+    const newTracks=[...existing,data];
+    renderDayTracks(did,newTracks);
+    // auto-fill date if empty
+    const dayEl=$('day-'+did);
+    const dateInput=dayEl?.querySelector('.d-date');
+    if(dateInput&&!dateInput.value&&data.startDate){
+      dateInput.value=data.startDate;
+      const moonInput=dayEl?.querySelector('.d-moon');
+      if(moonInput)moonInput.value=moonPhase(data.startDate);
+    }
+    // auto-fill duration as sum of all tracks
+    const totalDur=newTracks.reduce((a,t)=>a+parseFloat(t.durationHrs||0),0);
+    const dur=dayEl?.querySelector('.d-dur');
+    if(dur)dur.value=totalDur.toFixed(1);
+  };
+  reader.readAsText(file);
+}
+// ── PHOTO UPLOAD ─────────────────────────────────────
+function resizeImage(file,maxPx,quality){
+  maxPx=maxPx||1920;quality=quality||0.80;
+  return new Promise(function(resolve,reject){
+    var img=new Image();
+    var url=URL.createObjectURL(file);
+    img.onload=function(){
+      URL.revokeObjectURL(url);
+      var w=img.width,h=img.height;
+      if(w>maxPx||h>maxPx){if(w>h){h=Math.round(h*maxPx/w);w=maxPx;}else{w=Math.round(w*maxPx/h);h=maxPx;}}
+      var canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      canvas.toBlob(function(blob){
+        if(blob)resolve(new File([blob],file.name.split('.')[0]+'.jpg',{type:'image/jpeg'}));
+        else reject(new Error('toBlob failed'));
+      },'image/jpeg',quality);
+    };
+    img.onerror=reject;img.src=url;
+  });
+}
+async function uploadPhoto(file,path,onProgress){
+  var resized=await resizeImage(file);
+  return new Promise(function(resolve,reject){
+    var sr=ref(storage,path);
+    var task=uploadBytesResumable(sr,resized);
+    task.on('state_changed',function(snap){
+      if(onProgress)onProgress(Math.round(snap.bytesTransferred/snap.totalBytes*100));
+    },reject,async function(){
+      try{resolve(await getDownloadURL(task.snapshot.ref));}catch(e){reject(e);}
+    });
+  });
+}
+async function deleteStoragePhoto(path){
+  try{await deleteObject(ref(storage,path));}catch(e){console.warn('Delete photo:',e);}
+}
+let tripPhotos=[];
+let catchPhotos={};
+function renderTripPhotos(){
+  const grid=$('trip-photos');if(!grid)return;
+  const maxed=tripPhotos.length>=10;
+  grid.innerHTML=tripPhotos.map((p,i)=>`<div class="photo-thumb"><img src="${esc(p.url)}" loading="lazy"><button class="ph-del" data-action="deltriphoto" data-idx="${i}">×</button><button class="ph-cover${p.isCover?' active':''}" data-action="setcover" data-idx="${i}">${p.isCover?'✓ Cover':'Set cover'}</button></div>`).join('');
+  const btn=$('trip-photo-upload-btn');if(btn)btn.style.display=maxed?'none':'flex';
+}
+function renderCatchPhotos(fid){
+  const grid=$('cphoto-'+fid);if(!grid)return;
+  const photos=catchPhotos[fid]||[];const maxed=photos.length>=2;
+  grid.innerHTML=photos.map((p,i)=>`<div class="photo-thumb"><img src="${esc(p.url)}" loading="lazy"><button class="ph-del" data-action="delcatchphoto" data-fid="${fid}" data-idx="${i}">×</button></div>`).join('');
+  const btn=$('cphoto-btn-'+fid);if(btn)btn.style.display=maxed?'none':'inline-flex';
+}
+async function handleTripPhotoUpload(file,tripId){
+  if(tripPhotos.length>=10){alert('Maximum 10 trip photos.');return;}
+  const pw=$('trip-photo-progress'),pb=$('trip-photo-bar');
+  if(pw)pw.classList.add('visible');
+  try{
+    const path='trips/'+user.uid+'/'+(tripId||'new')+'/trip_'+Date.now()+'.jpg';
+    const url=await uploadPhoto(file,path,pct=>{if(pb)pb.style.width=pct+'%';});
+    const isCover=tripPhotos.length===0;
+    tripPhotos.push({url,path,isCover});
+    renderTripPhotos();
+  }catch(e){alert('Upload failed: '+e.message);}
+  finally{if(pw)pw.classList.remove('visible');if(pb)pb.style.width='0%';}
+}
+async function handleCatchPhotoUpload(file,fid,tripId){
+  if((catchPhotos[fid]||[]).length>=2){alert('Maximum 2 photos per catch.');return;}
+  const btn=$('cphoto-btn-'+fid);if(btn)btn.textContent='Uploading...';
+  try{
+    const path='trips/'+user.uid+'/'+(tripId||'new')+'/catch_'+fid+'_'+Date.now()+'.jpg';
+    const url=await uploadPhoto(file,path);
+    if(!catchPhotos[fid])catchPhotos[fid]=[];
+    catchPhotos[fid].push({url,path});
+    renderCatchPhotos(fid);
+  }catch(e){alert('Upload failed: '+e.message);}
+  finally{if(btn)btn.textContent='+ photo';}
+}
+
+// ── SHARE CARD ────────────────────────────────────────
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
+}
+function generateShareCard(t){
+  const pre=t.pre||{},post=t.post||{};
+  const allFish=(t.days||[]).flatMap(d=>d.fish||[]);
+  const allMiss=(t.days||[]).flatMap(d=>d.misses||[]);
+  const best=allFish.reduce((a,f)=>parseFloat(f.weight||0)>parseFloat(a.weight||0)?f:a,{weight:0});
+  const dr=pre.dateFrom?fmtDate(pre.dateFrom)+(pre.dateTo&&pre.dateTo!==pre.dateFrom?' - '+fmtDate(pre.dateTo):''):'';
+  const W=800,H=480,canvas=$('share-canvas');
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#1a2744';ctx.fillRect(0,0,W,H);
+  const g=ctx.createLinearGradient(0,0,W,0);g.addColorStop(0,'#185FA5');g.addColorStop(1,'#1D9E75');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,6);
+  ctx.fillStyle='#fff';ctx.font='bold 26px Arial,sans-serif';
+  ctx.fillText(pre.destination||'Fishing Trip',40,58);
+  ctx.fillStyle='#8899bb';ctx.font='14px Arial,sans-serif';ctx.fillText(dr,40,80);
+  ctx.strokeStyle='#2a3a5a';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(40,98);ctx.lineTo(W-40,98);ctx.stroke();
+  [['FISH',String(allFish.length),'#1D9E75'],['MISSES',String(allMiss.length),'#D4860A'],['DAYS',String((t.days||[]).length),'#185FA5'],['RATING',post.rating?'★'.repeat(post.rating):'-','#D4860A']].forEach((s,i)=>{
+    const x=40+i*175,by=115,bw=155,bh=78;
+    ctx.fillStyle='#243156';roundRect(ctx,x,by,bw,bh,8);ctx.fill();
+    ctx.fillStyle=s[2];ctx.font='bold 28px Arial,sans-serif';ctx.textAlign='center';
+    ctx.fillText(s[1],x+bw/2,by+44);
+    ctx.fillStyle='#8899bb';ctx.font='11px Arial,sans-serif';ctx.fillText(s[0],x+bw/2,by+64);
+    ctx.textAlign='left';
+  });
+  if(best.weight){
+    ctx.fillStyle='#fff';ctx.font='bold 15px Arial,sans-serif';ctx.fillText('Best catch:',40,235);
+    ctx.fillStyle='#1D9E75';ctx.font='bold 16px Arial,sans-serif';ctx.fillText(best.species+' - '+best.weight+'kg',155,235);
+  }
+  const allTracks=(t.days||[]).flatMap(d=>d.tcxTracks||[]);
+  if(allTracks.length){
+    const mx=W-255,my=115,mw=215,mh=H-155;
+    ctx.fillStyle='#243156';roundRect(ctx,mx,my,mw,mh,8);ctx.fill();
+    ctx.fillStyle='#8899bb';ctx.font='11px Arial,sans-serif';ctx.textAlign='center';
+    ctx.fillText('GPS TRACK',mx+mw/2,my+15);ctx.textAlign='left';
+    allTracks.forEach((tr,ti)=>{
+      const coords=tr.coords||[];if(coords.length<2)return;
+      const lats=coords.map(c=>Array.isArray(c)?c[0]:c.lat);
+      const lngs=coords.map(c=>Array.isArray(c)?c[1]:c.lng);
+      const minLa=Math.min(...lats),maxLa=Math.max(...lats);
+      const minLg=Math.min(...lngs),maxLg=Math.max(...lngs);
+      const lr=maxLa-minLa||0.001,lgr=maxLg-minLg||0.001,pad=14;
+      const tx=lg=>mx+pad+(lg-minLg)/lgr*(mw-2*pad);
+      const ty=la=>my+24+pad+(maxLa-la)/lr*(mh-36-2*pad);
+      const tc=['#4A9EE8','#3EBF8A','#F0A030','#E05050'];
+      ctx.strokeStyle=tc[ti%tc.length];ctx.lineWidth=1.5;ctx.lineJoin='round';
+      ctx.beginPath();
+      coords.forEach((c,i)=>{const x=tx(Array.isArray(c)?c[1]:c.lng),y=ty(Array.isArray(c)?c[0]:c.lat);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+      ctx.stroke();
+    });
+  }
+  if(pre.target1){ctx.fillStyle='#8899bb';ctx.font='13px Arial,sans-serif';ctx.fillText('Target: '+pre.target1+(pre.target2?' - '+pre.target2:''),40,H-58);}
+  if(pre.companions?.length){ctx.fillStyle='#8899bb';ctx.font='13px Arial,sans-serif';ctx.fillText('With: '+pre.companions.map(c=>c.name).join(', '),40,H-38);}
+  ctx.fillStyle='#4a5a7a';ctx.font='12px Arial,sans-serif';
+  ctx.fillText('Big Fishing Trip v'+AV,40,H-16);
+  ctx.textAlign='right';ctx.fillText(new Date().toLocaleDateString('en-SG'),W-40,H-16);ctx.textAlign='left';
+  const pv=$('share-preview');
+  if(pv)pv.innerHTML='<img src="'+canvas.toDataURL()+'" style="max-width:100%;border-radius:8px;border:0.5px solid var(--border)">';
+  return canvas;
+}
+
+// ── COLLECT PRE / POST ────────────────────────────────
+function getPre(silent=false){
+  const df=val('pre-from'),dt=val('pre-to');
+  if(!silent&&df&&dt&&dt<df){alert('Return date cannot be before departure date.');return null;}
+  return{
+    destination:val('pre-dest'),dateFrom:df,dateTo:dt,
+    charter:val('pre-charter'),companions:getComps(),
+    target1:val('pre-t1'),target2:val('pre-t2'),strategy:val('pre-strategy'),
+    moon:val('pre-moon'),highTide:val('pre-htide'),fcnotes:val('pre-fcnotes'),
+    notes:val('pre-notes'),tasks:getTasks(),equip:getShop(),setups:getSetups(),
+    costs:{
+      charter:parseFloat($('cost-charter')?.value||0)||0,
+      transport:parseFloat($('cost-transport')?.value||0)||0,
+      accom:parseFloat($('cost-accom')?.value||0)||0
+    }
+  };
+}
+function getPost(){
+  return{
+    rating:+($('post-rating')?.value||0),
+    works:getBullets('works-list'),lessons:getBullets('lessons-list'),
+    failures:getFailures(),fixes:getFixes(),
+    miscCosts:getMiscCosts(),notes:val('post-notes')
+  };
+}
+
+// ── RESET FORM ────────────────────────────────────────
+function resetForm(forEdit=false){
+  ['pre-dest','pre-from','pre-to','pre-charter','pre-t1','pre-t2','pre-strategy','pre-moon','pre-htide','pre-fcnotes','pre-notes','f-notes','post-notes','cost-charter','cost-transport','cost-accom','cost-total'].forEach(id=>{const e=$(id);if(e)e.value='';});
+  ['companion-list','setup-list','task-list','shop-list','day-list','works-list','lessons-list','failure-list','fix-list','misc-cost-list'].forEach(id=>{const e=$(id);if(e)e.innerHTML='';});
+  Object.keys(maps).forEach(k=>{try{maps[k].remove();}catch(e){}delete maps[k];});
+  scnt=0;dcnt=0;fcnt=0;lcnt=0;mcnt=0;tcnt=0;ecnt=0;xcnt=0;ccnt=0;mscnt=0;flcnt=0;
+  lastSetupId='';lastLureId='';lastSpot='';tripPhotos=[];catchPhotos={};tripPhotos=[];catchPhotos={};
+  setStars(0);calcShopTotals();calcGrandTotal();renderTripPhotos();renderTripPhotos();
+  if(!forEdit){
+    editId=null;
+    addSetup();addDay();
+    addTask({text:'Spool reels'});addTask({text:'Check and charge cameras'});addTask({text:'Currency and phone line'});
+    addBullet('works-list');addBullet('lessons-list');addFix();addFailure();
+    // C3: prompt fix list from last completed trip
+    setTimeout(()=>{
+      const last=trips.find(t=>tripStatus(t)==='completed'&&t.post?.fixes?.length);
+      if(last){
+        const items=last.post.fixes.filter(f=>f.item);
+        if(items.length){
+          const msg=`Your last trip "${last.pre?.destination||'previous trip'}" had ${items.length} item${items.length>1?'s':''} on the fix list:\n\n${items.map(f=>'• '+f.item+(f.priority?' ('+f.priority+')':'')).join('\n')}\n\nAdd to this trip's shopping list?`;
+          if(confirm(msg)){items.forEach(f=>addShopRow({item:f.item}));showPreTab('gear');}
+        }
+      }
+    },400);
+  }
+}
+
+// ── EDIT TRIP ─────────────────────────────────────────
+function editTrip(id){
+  collapseAllInlineMaps();
+  const t=trips.find(x=>x.id===id);if(!t)return;
+  editId=t.id;closeDetail();resetForm(true);
+  const pre=t.pre||{},post=t.post||{};
+  const sv=(id,v)=>{const e=$(id);if(e)e.value=v||'';};
+  sv('pre-dest',pre.destination);sv('pre-from',pre.dateFrom);sv('pre-to',pre.dateTo);
+  sv('pre-charter',pre.charter);sv('pre-t1',pre.target1);sv('pre-t2',pre.target2);
+  sv('pre-strategy',pre.strategy);sv('pre-moon',pre.moon);sv('pre-htide',pre.highTide);
+  sv('pre-fcnotes',pre.fcnotes);sv('pre-notes',pre.notes);sv('f-notes',t.notes||'');sv('post-notes',post.notes||'');
+  if(pre.costs){sv('cost-charter',pre.costs.charter||'');sv('cost-transport',pre.costs.transport||'');sv('cost-accom',pre.costs.accom||'');calcPreCostTotal();}
+  (pre.companions||[]).forEach(c=>addCompRow(c));
+  (pre.tasks||[]).forEach(t=>addTask(t));
+  (pre.equip||[]).forEach(e=>addShopRow(e));
+  (pre.setups||[]).forEach(s=>addSetup(s));
+  (t.days||[]).forEach(d=>addDay(d));
+  setStars(post.rating||0);
+  (post.works||[]).forEach(w=>addBullet('works-list',w));
+  (post.lessons||[]).forEach(l=>addBullet('lessons-list',l));
+  (post.failures||[]).forEach(f=>addFailure(f));
+  (post.fixes||[]).forEach(f=>addFix(f));
+  (post.miscCosts||[]).forEach(m=>addMiscCost(m));
+  tripPhotos=(t.photos||[]).slice();catchPhotos={};renderTripPhotos();
+  // restore trip photos
+  tripPhotos=(t.photos||[]);catchPhotos={};
+  renderTripPhotos();
+  // restore catch photos from days
+  (t.days||[]).forEach(d=>(d.fish||[]).forEach(f=>{if(f.photos?.length&&f._fid)catchPhotos[f._fid]=f.photos;}));
+  calcShopTotals();calcGrandTotal();
+  showTab('pre');
+  alert('Trip loaded for editing. Make your changes then tap Save Trip.');
+}
+
+// ── NEW TRIP FROM TCX ─────────────────────────────────
+function handleNewTripTCX(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const data=parseTCX(e.target.result);
+    if(!data?.coords?.length){alert('Could not read GPS data. Please check this is a valid Garmin TCX file.');return;}
+    data.fileName=file.name;pendTCX=data;
+    const td=data.startDate;
+    if(!td){createNewTripFromTCX();return;}
+    const tdMs=new Date(td).getTime();
+    const match=trips.find(t=>{
+      const df=t.pre?.dateFrom,dt=t.pre?.dateTo||df;
+      if(!df)return false;
+      return tdMs>=(new Date(df).getTime()-3*86400000)&&tdMs<=(new Date(dt).getTime()+3*86400000);
+    });
+    if(match){
+      pendMatchId=match.id;
+      const dupDay=(match.days||[]).find(d=>d.date===td);
+      $('merge-title').textContent='GPS file matches an existing trip';
+      let desc=`This GPS track is dated ${fmtDateLong(td)}, which is within 3 days of your "${match.pre?.destination||'Unnamed'}" trip (${fmtDate(match.pre?.dateFrom||'')}${match.pre?.dateTo&&match.pre.dateTo!==match.pre.dateFrom?' – '+fmtDate(match.pre.dateTo):''}). What would you like to do?`;
+      $('merge-desc').innerHTML=desc+(dupDay?`<div class="warn-banner">🚨 Duplicate date: this trip already has a day entry for ${fmtDateLong(td)}. Adding this may create duplicate data.</div>`:'');
+      openModal('merge-modal');
+    } else {
+      createNewTripFromTCX();
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function mergeTCXIntoTrip(){
+  closeModal('merge-modal');
+  if(!pendTCX||!pendMatchId)return;
+  const t=trips.find(x=>x.id===pendMatchId);if(!t)return;
+  const newDay=buildDayFromTCX(pendTCX);
+  const mergedDays=[...(t.days||[]),newDay].sort((a,b)=>(a.date||'')<(b.date||'')?-1:(a.date||'')>(b.date||'')?1:0);
+  const allDates=mergedDays.map(d=>d.date).filter(Boolean).sort();
+  const newPre={...(t.pre||{}),dateFrom:allDates[0]||t.pre?.dateFrom||'',dateTo:allDates[allDates.length-1]||t.pre?.dateTo||''};
+  const updated={...t,pre:newPre,days:mergedDays,savedAt:Date.now()};
+  const existing=trips.find(x=>x.id===t.id);
+  const history=existing?[stripHistory(existing),...(existing.history||[])].slice(0,3):[];
+  const tFull={...updated,history};
+  sync('ing','Saving...');
+  try{
+    await setDoc(doc(col('trips'),t.id),prepForFirestore(tFull));
+    const idx=trips.findIndex(x=>x.id===t.id);if(idx>-1)trips[idx]=tFull;
+    sync('ok','Saved');pendTCX=null;pendMatchId=null;
+    renderTrips();alert(`Day added to "${t.pre?.destination||'trip'}"`);
+  }catch(e){sync('err','Save failed');alert('Save failed: '+e.message);}
+}
+
+async function createNewTripFromTCX(){
+  closeModal('merge-modal');if(!pendTCX)return;
+  const id='t'+Date.now();
+  const newDay=buildDayFromTCX(pendTCX);
+  const t={id,schemaVersion:SV,appVersion:AV,savedAt:Date.now(),
+    pre:{destination:'',dateFrom:pendTCX.startDate,dateTo:pendTCX.startDate,charter:'',companions:[],target1:'',target2:'',strategy:'',moon:'',highTide:'',fcnotes:'',notes:'',tasks:[],equip:[],setups:[],costs:{charter:0,transport:0,accom:0}},
+    days:[newDay],notes:'',
+    post:{rating:0,works:[],lessons:[],failures:[],fixes:[],miscCosts:[],notes:''},
+    history:[]};
+  sync('ing','Saving...');
+  try{
+    await setDoc(doc(col('trips'),id),prepForFirestore(t));
+    trips.unshift(t);sync('ok','Saved');pendTCX=null;pendMatchId=null;
+    renderTrips();alert('New trip created from GPS file. Open it to add species, setups and other details.');
+  }catch(e){sync('err','Save failed');alert('Save failed: '+e.message);}
+}
+
+function buildDayFromTCX(data){
+  const fish=(data.catches||[]).map(c=>({species:'',spot:`Lat ${c.lat.toFixed(4)} Lng ${c.lng.toFixed(4)}`,time:c.time,length:'',weight:'',setupId:'',lureLid:''}));
+  return{
+    date:data.startDate,location:'',highTide:'',highTide2:'',
+    moonPhase:moonPhase(data.startDate),weather:'',tide:'',duration:data.durationHrs,
+    notes:`GPS track: ${data.fileName}${data.distanceKm?' · '+data.distanceKm+'km':''}${data.catches?.length?' · '+data.catches.length+' catch event'+(data.catches.length>1?'s':'')+' detected':''}`,
+    fish,misses:[],
+    tcxTracks:[data]
+  };
+}
+
+// ── MY TRIPS ──────────────────────────────────────────
+function sortedTrips(){
+  return[...trips].sort((a,b)=>{
+    const da=a.pre?.dateFrom||'',db=b.pre?.dateFrom||'';
+    if(db>da)return 1;if(db<da)return -1;
+    return(b.savedAt||0)-(a.savedAt||0);
+  });
+}
+
+function renderTrips(){
+  updateExportBar();
+  const el=$('trips-list');
+  const sorted=sortedTrips();
+  if(!sorted.length){el.innerHTML='<div class="empty">No trips yet.<br><br>Use Pre-Trip to plan, or upload a GPS file above.</div>';return;}
+  el.innerHTML=sorted.map(t=>{
+    const pre=t.pre||{},post=t.post||{};
+    const status=tripStatus(t),isPend=status==='pending';
+    const allFish=(t.days||[]).flatMap(d=>d.fish||[]);
+    const allMiss=(t.days||[]).flatMap(d=>d.misses||[]);
+    const best=allFish.reduce((a,f)=>parseFloat(f.weight||0)>parseFloat(a.weight||0)?f:a,{weight:0});
+    const dr=pre.dateFrom?fmtDate(pre.dateFrom)+(pre.dateTo&&pre.dateTo!==pre.dateFrom?' – '+fmtDate(pre.dateTo):''):'';
+    const sel=selectedIds.has(t.id);
+    const hasTCX=(t.days||[]).some(d=>d.tcxTracks?.length>0);
+    return`<div class="trip-card${sel?' sel':''}${isPend?' pend':''}" data-tid="${t.id}">
+      <div class="trip-top">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <input type="checkbox" class="trip-cb" data-tid="${t.id}" ${sel?'checked':''}>
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <span class="trip-dest">${esc(pre.destination||'Unnamed trip')}</span>
+              ${isPend?'<span class="badge amber">Upcoming</span>':''}
+            </div>
+            <div class="trip-date">${dr}</div>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          ${isPend?'<span class="badge amber">Planning</span>':'<span class="badge green">'+allFish.length+' fish · '+(t.days||[]).length+'d</span>'}
+          ${allMiss.length&&!isPend?'<div style="margin-top:4px"><span class="badge red">'+allMiss.length+' miss'+(allMiss.length>1?'es':'')+'</span></div>':''}
+          ${post.rating?'<div style="font-size:13px;color:var(--amber);margin-top:4px">'+starStr(post.rating)+'</div>':''}
+        </div>
+      </div>
+      ${t.coverPhoto?.url?`<div style="margin:8px 0 4px;border-radius:var(--rs);overflow:hidden;height:120px;width:100%"><img src="${esc(t.coverPhoto.url)}" style="width:100%;height:100%;object-fit:cover"></div>`:''}
+      ${t.coverPhoto?.url?`<div style="margin:6px 0;border-radius:var(--rs);overflow:hidden;height:110px"><img src="${esc(t.coverPhoto.url)}" style="width:100%;height:100%;object-fit:cover"></div>`:''}${isPend?'<div style="font-size:12px;color:var(--amber-text);padding-left:28px;margin-top:4px">📅 Upcoming — pre-trip planning saved</div>':''}
+      ${!isPend&&best.weight?`<div style="font-size:12px;color:var(--text2);margin-top:4px;padding-left:28px">Best: ${esc(best.species)} ${best.weight}kg</div>`:''}
+      ${pre.target1?`<div style="font-size:12px;color:var(--text3);margin-top:4px;padding-left:28px">Target: ${esc(pre.target1)}${pre.target2?' · '+esc(pre.target2):''}</div>`:''}
+      <div class="trip-actions">
+        <button class="btn-sm-blue" data-action="opentrip" data-tid="${t.id}">View</button>
+        <button class="btn-sm-blue" data-action="edittrip" data-tid="${t.id}">Edit</button>
+        ${hasTCX?`<button class="btn-sm-blue" data-action="togglemap" data-tid="${t.id}" id="mapbtn-${t.id}">Show map</button>`:''}
+        <button class="btn-sm-red" data-action="deltrip" data-tid="${t.id}">Delete</button>
+      </div>
+      <div id="imap-${t.id}" style="display:none"></div>
+    </div>`;
+  }).join('');
+}
+
+function toggleInlineMap(tid){
+  const c=$('imap-'+tid);if(!c)return;
+  const btn=$('mapbtn-'+tid);
+  if(c.style.display==='none'){
+    c.style.display='block';if(btn)btn.textContent='Hide map';
+    const t=trips.find(x=>x.id===tid);if(!t)return;
+    const days=(t.days||[]).filter(d=>d.tcxTracks?.length>0);
+    c.innerHTML=days.map((d,di)=>
+      d.tcxTracks.map((tr,ti)=>`<div id="imap-${tid}-${di}-${ti}" class="map-box" style="margin-bottom:8px"></div>`).join('')
+    ).join('');
+    setTimeout(()=>{
+      days.forEach((d,di)=>{
+        d.tcxTracks.forEach((tr,ti)=>{
+          tryBuildMap(`imap-${tid}-${di}-${ti}`,tr,tr.catches||[],TRACK_COLORS[ti%TRACK_COLORS.length]);
+        });
+      });
+    },100);
+  } else {
+    c.style.display='none';if(btn)btn.textContent='Show map';
+    Object.keys(maps).filter(k=>k.startsWith('imap-'+tid+'-')).forEach(k=>{try{maps[k].remove();}catch(e){}delete maps[k];});
+  }
+}
+
+function updateExportBar(){
+  const n=selectedIds.size;
+  $('exp-bar').classList.toggle('visible',n>0);
+  $('exp-count').textContent=n>0?n+' trip'+(n>1?'s':'')+' selected':'Tap a trip to select for export';
+  $('sel-all').textContent=selectedIds.size===trips.length?'Deselect all':'Select all';
+}
+// ── DETAIL VIEW ───────────────────────────────────────
+function collapseAllInlineMaps(){
+  document.querySelectorAll('[id^="imap-"]').forEach(el=>{
+    if(el.id.match(/^imap-[^-]+$/)&&el.style.display!=='none'){
+      el.style.display='none';
+      const tid=el.id.replace('imap-','');
+      const btn=$('mapbtn-'+tid);if(btn)btn.textContent='Show map';
+      Object.keys(maps).filter(k=>k.startsWith('imap-'+tid+'-')).forEach(k=>{try{maps[k].remove();}catch(e){}delete maps[k];});
+    }
+  });
+}
+function openDetail(id){
+  collapseAllInlineMaps();
+  const t=trips.find(x=>x.id===id);if(!t)return;
+  detailId=id;
+  const pre=t.pre||{},post=t.post||{};
+  const si={},li={};
+  (pre.setups||[]).forEach((s,i)=>{si[s.id]={...s,num:i+1};(s.lures||[]).forEach(l=>{li[s.id+'::'+l.lid]={...l};});});
+  const dr=(k,v)=>v?`<div class="drow"><span class="dk">${k}</span><span class="dv">${esc(v)}</span></div>`:'';
+  const dateRange=pre.dateFrom?fmtDate(pre.dateFrom)+(pre.dateTo&&pre.dateTo!==pre.dateFrom?' – '+fmtDate(pre.dateTo):''):'';
+  const status=tripStatus(t);
+  const preCostTotal=(pre.costs?.charter||0)+(pre.costs?.transport||0)+(pre.costs?.accom||0);
+  const miscTotal=(post.miscCosts||[]).reduce((a,m)=>a+m.amount,0);
+
+  const preHTML=`
+    <div class="phase-badge blue">Pre-trip plan</div>
+    <div class="card">
+      ${dr('Destination',pre.destination)}${dr('Dates',dateRange)}
+      ${pre.charter?`<div class="drow"><span class="dk">Charter</span><span class="dv" style="white-space:pre-wrap">${esc(pre.charter)}</span></div>`:''}
+      ${pre.companions?.length?dr('Companions',pre.companions.map(c=>c.name+(c.contact?' ('+c.contact+')':'')).join(', ')):''}
+      ${preCostTotal>0?`${dr('Charter cost',pre.costs?.charter?numFmt(pre.costs.charter):'')}${dr('Transport',pre.costs?.transport?numFmt(pre.costs.transport):'')}${dr('Accommodation',pre.costs?.accom?numFmt(pre.costs.accom):'')}
+      <div class="drow" style="font-weight:600">${'<span class="dk">Pre-trip total</span><span class="dv">'+numFmt(preCostTotal)+'</span>'}</div>`:''}
+    </div>
+    ${pre.target1||pre.strategy?`<div class="card">${dr('Primary target',pre.target1)}${dr('Secondary',pre.target2)}${pre.strategy?`<div class="drow"><span class="dk">Strategy</span><span class="dv" style="white-space:pre-wrap">${esc(pre.strategy)}</span></div>`:''}</div>`:''}
+    ${pre.moon||pre.fcnotes?`<div class="card">${dr('Forecast moon',pre.moon?moonEmoji(pre.moon)+' '+pre.moon:'')}${dr('Forecast high tide',pre.highTide)}${pre.fcnotes?`<div class="drow"><span class="dk">Forecast notes</span><span class="dv" style="white-space:pre-wrap">${esc(pre.fcnotes)}</span></div>`:''}</div>`:''}
+    ${pre.tasks?.length?`<div class="card"><div class="card-label">Prep tasks</div>${pre.tasks.map(t=>`<div style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:6px"><span style="color:${t.done?'var(--green)':'var(--text3)'}">${t.done?'✓':'○'}</span><span style="${t.done?'text-decoration:line-through;color:var(--text3)':''}">${esc(t.text)}</span></div>`).join('')}</div>`:''}
+    ${pre.equip?.length?`<div class="card"><div class="card-label">Shopping list</div>${pre.equip.map(e=>`<div style="display:flex;justify-content:space-between;font-size:14px;padding:5px 0;border-bottom:0.5px solid var(--border)"><span style="${e.bought?'text-decoration:line-through;color:var(--text3)':''}">${esc(e.item)}</span><div style="display:flex;align-items:center;gap:8px">${e.bought?'<span class="badge green" style="font-size:10px">Bought</span>':''}<span style="color:var(--text2)">${[e.source,e.cost?'S$ '+e.cost:''].filter(Boolean).join(' · ')}</span></div></div>`).join('')}</div>`:''}
+    ${pre.setups?.length?`<div class="card"><div class="card-label">Rod & reel setups</div>${pre.setups.map((s,i)=>`<div style="margin-bottom:12px">${i>0?'<hr style="border:none;border-top:0.5px solid var(--border);margin-bottom:12px">':''}<div style="font-size:14px;font-weight:600;margin-bottom:6px">Setup #${i+1}${s.rod?' — '+esc(s.rod):''}</div>${dr('Rod',s.rod)}${dr('Reel',s.reel)}${dr('Line',s.line)}${dr('Leader',s.leader)}${dr('Lure weight range',s.lureWeightRange)}${dr('Solid ring',s.solidRing)}${dr('Split ring',s.splitRing)}${s.lures?.length?'<div style="margin-top:8px">'+s.lures.map(l=>`<div style="font-size:13px;padding:4px 0;border-bottom:0.5px solid var(--border)"><span style="font-weight:500">${esc(l.name)}</span>${l.type?' · '+esc(l.type):''}${l.weight?' · '+esc(l.weight):''}${l.hook?' · Hook: '+esc(l.hook):''}</div>`).join('')+'</div>':''}</div>`).join('')}</div>`:''}`;
+
+  const daysHTML=(t.days||[]).map((d,i)=>{
+    const fish=d.fish||[],miss=d.misses||[];
+    const fishHTML=fish.length?fish.map(f=>{
+      const s=si[f.setupId],l=li[f.setupId+'::'+f.lureLid];
+      return`<div style="padding:8px 0;border-bottom:0.5px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:4px">
+          <div>
+            <span style="font-size:15px;font-weight:600">${esc(f.species)}</span>
+            ${f.time?`<span style="font-size:12px;color:var(--text3);margin-left:8px">${f.time}</span>`:''}
+            ${f.length?`<span style="font-size:13px;color:var(--text2);margin-left:8px">${f.length}cm</span>`:''}
+            ${f.weight?`<span style="font-size:13px;color:var(--text2);margin-left:4px">/ ${f.weight}kg</span>`:''}
+            ${f.spot?`<div style="font-size:12px;color:var(--text3);margin-top:2px">📍 ${esc(f.spot)}</div>`:''}${f.photos?.length?`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:6px">${f.photos.map(p=>`<div style="aspect-ratio:1;border-radius:6px;overflow:hidden"><img src="${esc(p.url)}" style="width:100%;height:100%;object-fit:cover"></div>`).join('')}</div>`:''}
+          </div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            ${s?`<span class="badge blue">#${s.num}</span>`:''}
+            ${l?`<span class="badge green">${esc(l.name)}</span>`:''}
+          </div>
+        </div>
+        ${f.photos?.length?`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:8px">${f.photos.map(p=>`<div style="aspect-ratio:1;border-radius:6px;overflow:hidden"><img src="${esc(p.url)}" style="width:100%;height:100%;object-fit:cover"></div>`).join('')}</div>`:''}
+      </div>`;
+    }).join(''):`<span style="font-size:13px;color:var(--text3)">No fish recorded</span>`;
+    const missHTML=miss.length?`<div style="margin-top:10px"><div class="card-label">Misses (${miss.length})</div>${miss.map(m=>{const s=si[m.setupId],l=li[m.setupId+'::'+m.lureLid];return`<div style="display:flex;gap:8px;align-items:flex-start;font-size:13px;padding:5px 0;border-bottom:0.5px solid var(--border)"><span class="badge red">${esc(m.type||'Miss')}</span><div style="flex:1">${m.species?`<span style="font-weight:500">${esc(m.species)}</span> `:''}${m.spot?'@ '+esc(m.spot):''}${s?`<div style="font-size:12px;margin-top:2px"><span class="badge blue">#${s.num}</span>${l?`<span class="badge green" style="margin-left:4px">${esc(l.name)}</span>`:''}</div>`:''}</div>${m.time?`<span style="color:var(--text3);font-size:12px">${m.time}</span>`:''}</div>`;}).join('')}</div>`:'';
+    // maps for this day
+    const tracks=d.tcxTracks||[];
+    const mapsHTML=tracks.length?tracks.map((tr,ti)=>`<div id="dmap-${id}-${i}-${ti}" class="map-box" style="margin-top:${ti===0?10:6}px"></div>`).join('')+'<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">'+tracks.map(tr=>`<span class="map-stat">${tr.startTimeLocal||'?'} – ${tr.endTimeLocal||'?'} · ${tr.distanceKm}km</span>`).join('')+'</div>':'';
+    return`<div class="card">
+      <div style="font-size:15px;font-weight:700;color:var(--blue);margin-bottom:10px">Day ${i+1}${d.date?' — '+fmtDateLong(d.date):''}</div>
+      ${dr('Location',d.location)}${dr('Weather',d.weather)}${dr('Tide',d.tide)}
+      ${d.highTide?dr('High tide 1',d.highTide):''}${d.highTide2?dr('High tide 2',d.highTide2):''}
+      ${d.moonPhase?`<div class="drow"><span class="dk">Moon</span><span class="dv">${moonEmoji(d.moonPhase)} ${esc(d.moonPhase)}</span></div>`:''}
+      ${dr('Duration',d.duration?d.duration+' hours':'')}
+      <div style="margin-top:10px"><div class="card-label">Fish caught (${fish.length})</div>${fishHTML}</div>
+      ${missHTML}${mapsHTML}
+      ${d.notes?`<div style="margin-top:10px;font-size:14px;color:var(--text2);white-space:pre-wrap;line-height:1.6">${esc(d.notes)}</div>`:''}
+    </div>`;
+  }).join('');
+
+  const postHTML=(post.rating||post.works?.length||post.lessons?.length||post.failures?.length||post.fixes?.length||post.miscCosts?.length)?`
+    <div class="phase-badge green">Post-trip review</div>
+    ${post.rating?`<div style="font-size:22px;color:var(--amber);margin-bottom:10px">${starStr(post.rating)}</div>`:''}
+    ${post.works?.length?`<div style="margin-bottom:12px"><div class="card-label">What worked well</div>${post.works.map(w=>`<div style="display:flex;gap:8px;font-size:14px;margin-bottom:6px"><span style="color:var(--green)">✓</span><span>${esc(w)}</span></div>`).join('')}</div>`:''}
+    ${post.lessons?.length?`<div style="margin-bottom:12px"><div class="card-label">Lessons learnt</div>${post.lessons.map(l=>`<div style="display:flex;gap:8px;font-size:14px;margin-bottom:6px"><span style="color:var(--amber)">→</span><span>${esc(l)}</span></div>`).join('')}</div>`:''}
+    ${post.failures?.length?`<div style="margin-bottom:12px"><div class="card-label">Equipment / tackle failures</div>${post.failures.map(f=>`<div style="display:flex;justify-content:space-between;font-size:14px;padding:5px 0;border-bottom:0.5px solid var(--border)"><span>${esc(f.item)}</span>${f.severity?`<span class="badge red">${esc(f.severity)}</span>`:''}</div>`).join('')}</div>`:''}
+    ${post.fixes?.length?`<div style="margin-bottom:12px"><div class="card-label">Buy / fix before next trip</div>${post.fixes.map(f=>`<div style="display:flex;justify-content:space-between;font-size:14px;padding:5px 0;border-bottom:0.5px solid var(--border)"><span>${esc(f.item)}</span><span style="color:var(--text2)">${[f.priority,f.cost?'S$ '+f.cost:''].filter(Boolean).join(' · ')}</span></div>`).join('')}</div>`:''}
+    ${post.miscCosts?.length?`<div style="margin-bottom:12px"><div class="card-label">Additional costs</div>${post.miscCosts.map(m=>`<div style="display:flex;justify-content:space-between;font-size:14px;padding:5px 0;border-bottom:0.5px solid var(--border)"><span>${esc(m.label)}</span><span>${numFmt(m.amount)}</span></div>`).join('')}<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;padding:8px 0;border-top:0.5px solid var(--border);margin-top:4px"><span>Grand total</span><span style="color:var(--blue)">${numFmt(preCostTotal+miscTotal)}</span></div></div>`:''}
+    ${post.notes?`<p style="font-size:14px;color:var(--text2);line-height:1.6;white-space:pre-wrap">${esc(post.notes)}</p>`:''}`:'' ;
+
+  $('detail-body').innerHTML=`
+    <div style="font-size:20px;font-weight:700;letter-spacing:-.4px;margin-bottom:2px">${esc(pre.destination||'Fishing Trip')}</div>
+    <div style="font-size:14px;color:var(--text2);margin-bottom:12px">${dateRange}${pre.companions?.length?' · '+pre.companions.map(c=>esc(c.name)).join(', '):''}</div>
+    ${status==='pending'?'<div class="info-banner">📅 Upcoming trip — log your catches in Trip Log after your trip.</div>':''}
+    ${preHTML}
+    ${t.photos?.length?`<div class="slabel">Trip photos</div><div class="photo-grid" style="margin-bottom:16px">${t.photos.map(p=>`<div class="photo-thumb"><img src="${esc(p.url)}" loading="lazy"></div>`).join('')}</div>`:''}
+    ${t.photos?.length?`<div class="slabel">Trip photos</div><div class="photo-grid" style="margin-bottom:16px">${t.photos.map(p=>`<div class="photo-thumb"><img src="${esc(p.url)}" loading="lazy"></div>`).join('')}</div>`:''}${daysHTML?'<div class="slabel">Fishing days</div>'+daysHTML:''}
+    ${t.notes?`<div class="slabel">Trip notes</div><div class="card"><p style="font-size:14px;line-height:1.6;white-space:pre-wrap">${esc(t.notes)}</p></div>`:''}
+    ${postHTML?`<div class="card">${postHTML}</div>`:''}
+    <div class="version-footer">
+      <span>${t.appVersion?'App v'+t.appVersion:''}</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        ${t.savedAt?`<span>Saved ${fmtDateLong(new Date(t.savedAt).toISOString().slice(0,10))}</span>`:''}
+        ${t.history?.length?`<button class="btn-sm-blue" data-action="showhistory" data-tid="${t.id}">Version history (${t.history.length})</button>`:''}
+      </div>
+    </div>`;
+
+  $('detail-view').classList.add('open');
+  $('detail-body').scrollTop=0;
+  // build day maps
+  setTimeout(()=>{
+    (t.days||[]).forEach((d,i)=>{
+      (d.tcxTracks||[]).forEach((tr,ti)=>{
+        buildMap(`dmap-${id}-${i}-${ti}`,tr,tr.catches||[],TRACK_COLORS[ti%TRACK_COLORS.length]);
+      });
+    });
+  },200);
+}
+function closeDetail(){$('detail-view').classList.remove('open');detailId=null;}
+
+// ── EXPORT ────────────────────────────────────────────
+function exportSelected(){
+  const toExp=trips.filter(t=>selectedIds.has(t.id));if(!toExp.length)return;
+  const wb=XLSX.utils.book_new();
+  // Summary
+  const sr=[['Destination','Departure','Return','Charter','Companions','Target 1','Target 2','Status','Fish','Misses','Days','Rating','Works','Lessons','Failures','Notes']];
+  toExp.forEach(t=>{const p=t.pre||{},po=t.post||{};const af=(t.days||[]).flatMap(d=>d.fish||[]),am=(t.days||[]).flatMap(d=>d.misses||[]);sr.push([p.destination||'',p.dateFrom||'',p.dateTo||'',p.charter||'',(p.companions||[]).map(c=>c.name).join(', '),p.target1||'',p.target2||'',tripStatus(t),af.length,am.length,(t.days||[]).length,po.rating||'',(po.works||[]).join('; '),(po.lessons||[]).join('; '),(po.failures||[]).map(f=>f.item+(f.severity?' ('+f.severity+')':'')).join('; '),t.notes||'']);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sr),'Trip Summary');
+  // Catch Log
+  const cr=[['Trip','Day','Date','Location','Moon','HT1','HT2','Weather','Tide','Species','Spot','Time','Length cm','Weight kg','Setup','Lure']];
+  toExp.forEach(t=>{const p=t.pre||{};const si={},li={};(p.setups||[]).forEach((s,i)=>{si[s.id]={...s,num:i+1};(s.lures||[]).forEach(l=>{li[s.id+'::'+l.lid]=l.name;});});(t.days||[]).forEach((d,di)=>{if(!d.fish?.length)cr.push([p.destination||'','Day '+(di+1),d.date||'',d.location||'',d.moonPhase||'',d.highTide||'',d.highTide2||'',d.weather||'',d.tide||'','(no fish)','','','','','','']);else d.fish.forEach(f=>{const s=si[f.setupId],ln=li[f.setupId+'::'+f.lureLid]||'';cr.push([p.destination||'','Day '+(di+1),d.date||'',d.location||'',d.moonPhase||'',d.highTide||'',d.highTide2||'',d.weather||'',d.tide||'',f.species,f.spot||'',f.time||'',f.length||'',f.weight||'',s?'#'+s.num+(s.rod?' '+s.rod:''):'',ln]);});});});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(cr),'Catch Log');
+  // Misses
+  const mr=[['Trip','Day','Date','Location','Species','Spot','Time','Miss Type','Setup','Lure']];
+  toExp.forEach(t=>{const p=t.pre||{};const si={},li={};(p.setups||[]).forEach((s,i)=>{si[s.id]={...s,num:i+1};(s.lures||[]).forEach(l=>{li[s.id+'::'+l.lid]=l.name;});});(t.days||[]).forEach((d,di)=>{(d.misses||[]).forEach(m=>{const s=si[m.setupId],ln=li[m.setupId+'::'+m.lureLid]||'';mr.push([p.destination||'','Day '+(di+1),d.date||'',d.location||'',m.species||'',m.spot||'',m.time||'',m.type||'',s?'#'+s.num+(s.rod?' '+s.rod:''):'',ln]);});});});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(mr),'Misses Log');
+  // Setups
+  const setr=[['Trip','#','Rod','Reel','Line','Leader','Lure wt range','Solid ring','Split ring','Lure','Type','Weight','Hook']];
+  toExp.forEach(t=>{const p=t.pre||{};(p.setups||[]).forEach((s,i)=>{if(!s.lures?.length)setr.push([p.destination||'',i+1,s.rod||'',s.reel||'',s.line||'',s.leader||'',s.lureWeightRange||'',s.solidRing||'',s.splitRing||'','','','','']);else s.lures.forEach(l=>setr.push([p.destination||'',i+1,s.rod||'',s.reel||'',s.line||'',s.leader||'',s.lureWeightRange||'',s.solidRing||'',s.splitRing||'',l.name||'',l.type||'',l.weight||'',l.hook||'']));});});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(setr),'Rod & Reel Setups');
+  // Shopping
+  const shl=[['Trip','Item','Shop / Source','Cost','Bought']];
+  toExp.forEach(t=>{(t.pre?.equip||[]).forEach(e=>shl.push([t.pre?.destination||'',e.item||'',e.source||'',e.cost||'',e.bought?'Yes':'No']));});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(shl),'Shopping List');
+  // Fix list
+  const fl=[['Trip','Item','Priority','Est. Cost']];
+  toExp.forEach(t=>{(t.post?.fixes||[]).forEach(f=>fl.push([t.pre?.destination||'',f.item||'',f.priority||'',f.cost||'']));});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(fl),'Buy & Fix List');
+  XLSX.writeFile(wb,'BigFishingTrip_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+// ── INSIGHTS ──────────────────────────────────────────
+function renderInsights(){
+  const done=trips.filter(t=>tripStatus(t)==='completed');
+  const pend=trips.filter(t=>tripStatus(t)==='pending');
+  const fish=done.flatMap(t=>(t.days||[]).flatMap(d=>d.fish||[]));
+  const miss=done.flatMap(t=>(t.days||[]).flatMap(d=>d.misses||[]));
+  $('stats-grid').innerHTML=`
+    <div class="stat-card"><div class="stat-num">${done.length}</div><div class="stat-lbl">Completed</div></div>
+    <div class="stat-card"><div class="stat-num">${pend.length||'–'}</div><div class="stat-lbl">Upcoming</div></div>
+    <div class="stat-card"><div class="stat-num">${fish.length}</div><div class="stat-lbl">Fish caught</div></div>
+    <div class="stat-card"><div class="stat-num">${miss.length}</div><div class="stat-lbl">Misses</div></div>`;
+  if(!done.length){$('insights-body').innerHTML='<div class="empty">Complete a trip to see insights.</div>';return;}
+  const bars=(data,max,color)=>data.map(([l,c])=>`<div class="bar-row"><span class="bar-lbl" title="${esc(l)}">${l.length>18?l.slice(0,17)+'…':esc(l)}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(c/max*100)}%;background:${color}"></div></div><span class="bar-cnt">${c}</span></div>`).join('');
+  const days=done.flatMap(t=>t.days||[]);
+  // species
+  const spC={};fish.forEach(f=>{if(f.species)spC[f.species]=(spC[f.species]||0)+1;});
+  const topSp=Object.entries(spC).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  // lures
+  const lureC={};done.forEach(t=>{const lm={};(t.pre?.setups||[]).forEach(s=>(s.lures||[]).forEach(l=>{lm[s.id+'::'+l.lid]=l.name;}));(t.days||[]).forEach(d=>(d.fish||[]).forEach(f=>{const n=lm[f.setupId+'::'+f.lureLid];if(n)lureC[n]=(lureC[n]||0)+1;}));});
+  const topLure=Object.entries(lureC).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  // setups
+  const setupC={};done.forEach(t=>{const sm={};(t.pre?.setups||[]).forEach((s,i)=>{sm[s.id]='#'+(i+1)+(s.rod?' '+s.rod.split(' ').slice(0,2).join(' '):'');});(t.days||[]).forEach(d=>(d.fish||[]).forEach(f=>{if(f.setupId&&sm[f.setupId]){const l=sm[f.setupId];setupC[l]=(setupC[l]||0)+1;}}));});
+  const topSetup=Object.entries(setupC).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  // tide
+  const tideC={};days.forEach(d=>{if(d.tide)tideC[d.tide]=(tideC[d.tide]||0)+(d.fish?.length||0);});
+  const topTide=Object.entries(tideC).sort((a,b)=>b[1]-a[1]);
+  // moon
+  const moonC={};days.forEach(d=>{if(d.moonPhase)moonC[d.moonPhase]=(moonC[d.moonPhase]||0)+(d.fish?.length||0);});
+  const topMoon=Object.entries(moonC).sort((a,b)=>b[1]-a[1]);
+  // time of day
+  const slots=[['Before 06:00','00:00','05:59'],['06:00–09:00','06:00','08:59'],['09:00–12:00','09:00','11:59'],['12:00–15:00','12:00','14:59'],['15:00–18:00','15:00','17:59'],['After 18:00','18:00','23:59']];
+  const fishWithTime=fish.filter(f=>f.time);
+  const timeSlots=slots.map(([l,f,t])=>[l,fishWithTime.filter(fi=>fi.time>=f&&fi.time<=t).length]);
+  const maxTime=Math.max(...timeSlots.map(s=>s[1]));
+  // location table
+  const locM={};done.forEach(t=>{const dest=t.pre?.destination||'Unknown';if(!locM[dest])locM[dest]={fish:0,misses:0,trips:0};locM[dest].trips++;(t.days||[]).forEach(d=>{locM[dest].fish+=(d.fish||[]).length;locM[dest].misses+=(d.misses||[]).length;});});
+  const locRows=Object.entries(locM).sort((a,b)=>b[1].fish-a[1].fish);
+  // per trip
+  const tripRows=done.map(t=>{const p=t.pre||{};const af=(t.days||[]).flatMap(d=>d.fish||[]),am=(t.days||[]).flatMap(d=>d.misses||[]);return[p.destination||'Unknown',p.dateFrom?fmtDate(p.dateFrom):'',af.length,am.length,(t.days||[]).length];}).sort((a,b)=>b[2]-a[2]);
+
+  let html='';
+  if(topSp.length)html+=`<div class="insight-card"><div class="i-title">Top species caught</div>${bars(topSp,topSp[0][1],'#378ADD')}</div>`;
+  if(topLure.length)html+=`<div class="insight-card"><div class="i-title">Best lure / bait</div>${bars(topLure,topLure[0][1],'#1D9E75')}</div>`;
+  if(topSetup.length>1)html+=`<div class="insight-card"><div class="i-title">Most productive setup</div>${bars(topSetup,topSetup[0][1],'#D85A30')}</div>`;
+  if(topTide.length)html+=`<div class="insight-card"><div class="i-title">Fish caught by tide</div>${bars(topTide,topTide[0][1],'#EF9F27')}</div>`;
+  if(topMoon.length>1)html+=`<div class="insight-card"><div class="i-title">Fish caught by moon phase</div>${bars(topMoon,topMoon[0][1],'#7F77DD')}</div>`;
+  if(fishWithTime.length>2&&maxTime>0)html+=`<div class="insight-card"><div class="i-title">Best time of day</div>${bars(timeSlots.filter(s=>s[1]>0),maxTime,'#185FA5')}</div>`;
+  if(locRows.length)html+=`<div class="insight-card"><div class="i-title">Catches & misses by destination</div><table class="i-table"><thead><tr><th>Destination</th><th class="tr">Trips</th><th class="tr">Fish</th><th class="tr">Misses</th></tr></thead><tbody>${locRows.map(([l,d])=>`<tr><td>${esc(l)}</td><td class="tr">${d.trips}</td><td class="tr" style="color:var(--green-text)">${d.fish}</td><td class="tr" style="color:var(--red)">${d.misses}</td></tr>`).join('')}</tbody></table></div>`;
+  if(tripRows.length>1)html+=`<div class="insight-card"><div class="i-title">Fish & misses per trip</div><table class="i-table"><thead><tr><th>Trip</th><th>Date</th><th class="tr">Fish</th><th class="tr">Misses</th><th class="tr">Days</th></tr></thead><tbody>${tripRows.map(r=>`<tr><td>${esc(r[0])}</td><td style="color:var(--text3);font-size:12px">${r[1]}</td><td class="tr" style="color:var(--green-text)">${r[2]}</td><td class="tr" style="color:var(--red)">${r[3]}</td><td class="tr">${r[4]}</td></tr>`).join('')}</tbody></table></div>`;
+  $('insights-body').innerHTML=html||'<div class="empty">Log more trips to see patterns.</div>';
+}
+
+// ── SETUP MODALS ──────────────────────────────────────
+function showLoadSetupModal(){
+  const tw=trips.filter(t=>t.pre?.setups?.length);
+  const el=$('load-setup-opts');
+  if(!tw.length){el.innerHTML='<p style="font-size:14px;color:var(--text2);padding:12px 0">No previous trips with setups found.</p>';openModal('load-setup-modal');return;}
+  el.innerHTML=tw.map(t=>`<div class="modal-opt" data-action="loadsetuptrip" data-tid="${t.id}"><div><div style="font-weight:600">${esc(t.pre?.destination||'Unnamed')}${t.pre?.dateFrom?' — '+fmtDate(t.pre.dateFrom):''}</div><div style="font-size:13px;color:var(--text2)">${t.pre.setups.length} setup${t.pre.setups.length>1?'s':''}: ${t.pre.setups.map(s=>s.rod||'Setup').join(', ')}</div></div></div>`).join('');
+  openModal('load-setup-modal');
+}
+function showSetupLibModal(){
+  const el=$('setup-lib-opts');
+  if(!setupLib.length){el.innerHTML='<p style="font-size:14px;color:var(--text2);padding:12px 0">No saved setups yet. Saved automatically after each trip.</p>';openModal('setup-lib-modal');return;}
+  el.innerHTML='<p style="font-size:13px;color:var(--text2);margin-bottom:12px">Tap to add to this trip.</p>'+setupLib.map((s,i)=>`<div class="modal-opt" data-action="loadslib" data-idx="${i}"><div><div style="font-weight:600">${esc(s.rod||'Setup')}</div><div style="font-size:13px;color:var(--text2)">${esc(s.reel||'')}${s.line?' · '+esc(s.line):''}</div></div></div>`).join('');
+  openModal('setup-lib-modal');
+}
+
+// ── VERSION HISTORY ───────────────────────────────────
+function showHistory(tid){
+  const t=trips.find(x=>x.id===tid);if(!t?.history?.length)return;
+  const el=$('history-opts');
+  el.innerHTML=t.history.map((h,i)=>{
+    const d=h.savedAt?new Date(h.savedAt).toLocaleString('en-SG'):'Unknown date';
+    const fish=(h.days||[]).flatMap(d=>d.fish||[]).length;
+    const days=(h.days||[]).length;
+    return`<div class="modal-opt" data-action="restoreversion" data-tid="${tid}" data-hidx="${i}"><div><div style="font-weight:600">${d}</div><div style="font-size:13px;color:var(--text2)">${h.appVersion?'v'+h.appVersion:'legacy'} · ${days} day${days!==1?'s':''} · ${fish} fish</div></div></div>`;
+  }).join('');
+  openModal('history-modal');
+}
+async function restoreVersion(tid,hidx){
+  const t=trips.find(x=>x.id===tid);if(!t?.history?.[hidx])return;
+  if(!confirm('Restore this version? The current version will be saved to history.'))return;
+  closeModal('history-modal');
+  const snap=t.history[hidx];
+  const newHistory=[stripHistory(t),...(t.history||[])].filter((_,i)=>i!==hidx).slice(0,3);
+  const restored={...snap,id:tid,history:newHistory,appVersion:AV,savedAt:Date.now()};
+  sync('ing','Restoring...');
+  try{
+    await setDoc(doc(col('trips'),tid),prepForFirestore(restored));
+    const idx=trips.findIndex(x=>x.id===tid);if(idx>-1)trips[idx]=restored;
+    sync('ok','Restored');closeDetail();renderTrips();alert('Version restored.');
+  }catch(e){sync('err','Restore failed');alert('Restore failed: '+e.message);}
+}
+// ── EVENT DELEGATION ──────────────────────────────────
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('[data-action]');if(!btn)return;
+  const a=btn.dataset.action;
+  if(a==='rmrow'){btn.closest('[class]')?.remove();calcShopTotals();calcGrandTotal();return;}
+  if(a==='rmday'){$('day-'+btn.dataset.did)?.remove();renumDays();return;}
+  if(a==='rmsetup'){$('setup-'+btn.dataset.sid)?.remove();renumSetups();return;}
+  if(a==='rmtrack'){
+    const did=btn.dataset.did,ti=+btn.dataset.tidx;
+    const tracks=getDayTracks(did).filter((_,i)=>i!==ti);
+    renderDayTracks(did,tracks);return;
+  }
+  if(a==='addlure'){addLure(btn.dataset.sid);return;}
+  if(a==='addcatch'){addCatch(btn.dataset.did);return;}
+  if(a==='addmiss'){addMiss(btn.dataset.did);return;}
+  if(a==='newlure'){
+    const name=prompt('Lure / bait name:');if(!name)return;
+    const fid=btn.dataset.fid;
+    const row=$('crow-'+fid);if(!row)return;
+    const sid=row.querySelector('.c-setup')?.value;
+    if(!sid){alert('Please select a setup first.');return;}
+    addLure(sid,{name});
+    const newL=luresForSetup(sid).find(l=>l.name===name);
+    if(newL){
+      const lureSel=row.querySelector('.c-lure');
+      const lures=luresForSetup(sid);
+      lureSel.innerHTML='<option value="">— lure —</option>'+lures.map(l=>`<option value="${l.lid}" ${l.lid===newL.lid?'selected':''}>${esc(l.name)}</option>`).join('');
+      lastSetupId=sid;lastLureId=newL.lid;
+    }return;
+  }
+  if(a==='opentrip'){openDetail(btn.dataset.tid);return;}
+  if(a==='edittrip'){editTrip(btn.dataset.tid);return;}
+  if(a==='deltrip'){deleteId=btn.dataset.tid;openModal('del-modal');return;}
+  if(a==='togglemap'){toggleInlineMap(btn.dataset.tid);return;}
+  if(a==='showhistory'){showHistory(btn.dataset.tid);return;}
+  if(a==='restoreversion'){restoreVersion(btn.dataset.tid,+btn.dataset.hidx);return;}
+  if(a==='deltriphoto'){const i=+btn.dataset.idx;const p=tripPhotos[i];if(p?.path)deleteStoragePhoto(p.path);tripPhotos.splice(i,1);if(!tripPhotos.some(p=>p.isCover)&&tripPhotos.length)tripPhotos[0].isCover=true;renderTripPhotos();return;}
+  if(a==='setcover'){const i=+btn.dataset.idx;tripPhotos.forEach((p,j)=>p.isCover=(j===i));renderTripPhotos();return;}
+  if(a==='delcatchphoto'){const fid=btn.dataset.fid,i=+btn.dataset.idx;const p=(catchPhotos[fid]||[])[i];if(p?.path)deleteStoragePhoto(p.path);if(catchPhotos[fid])catchPhotos[fid].splice(i,1);renderCatchPhotos(fid);return;}
+  if(a==='deltriphoto'){
+    const idx=+btn.dataset.idx;
+    const p=tripPhotos[idx];
+    if(p?.path)deletePhoto(p.path);
+    tripPhotos.splice(idx,1);
+    // if deleted was cover, set first remaining as cover
+    if(!tripPhotos.some(p=>p.isCover)&&tripPhotos.length)tripPhotos[0].isCover=true;
+    renderTripPhotos();return;
+  }
+  if(a==='setcover'){
+    const idx=+btn.dataset.idx;
+    tripPhotos.forEach((p,i)=>p.isCover=(i===idx));
+    renderTripPhotos();return;
+  }
+  if(a==='delcatchphoto'){
+    const fid=btn.dataset.fid,idx=+btn.dataset.idx;
+    const p=(catchPhotos[fid]||[])[idx];
+    if(p?.path)deletePhoto(p.path);
+    if(catchPhotos[fid])catchPhotos[fid].splice(idx,1);
+    renderCatchPhotos(fid);return;
+  }
+  if(a==='loadsetuptrip'){
+    const t=trips.find(x=>x.id===btn.dataset.tid);
+    if(t?.pre?.setups){$('setup-list').innerHTML='';scnt=0;lcnt=0;t.pre.setups.forEach(s=>addSetup(s));}
+    closeAllModals();return;
+  }
+  if(a==='loadslib'){addSetup(setupLib[+btn.dataset.idx]);closeAllModals();return;}
+});
+
+document.addEventListener('change',e=>{
+  if(e.target.matches('[data-action="uploadcatchphoto"]')){const file=e.target.files[0];if(!file)return;e.target.value='';handleCatchPhotoUpload(file,e.target.dataset.fid,editId||('t'+Date.now()));return;}
+  if(e.target.matches('[data-action="uploadtcx"]')){
+    const file=e.target.files[0];if(file)handleDayTCX(file,e.target.dataset.did);
+    e.target.value='';return;
+  }
+  if(e.target.matches('[data-action="uploadcatchphoto"]')){
+    const file=e.target.files[0];if(!file)return;
+    e.target.value='';
+    const id=editId||('t'+Date.now());
+    handleCatchPhotoUpload(file,e.target.dataset.fid,id);return;
+  }
+  if(e.target.id==='inp-newtriptcx'){
+    const file=e.target.files[0];if(file)handleNewTripTCX(file);
+    e.target.value='';return;
+  }
+  if(e.target.matches('.trip-cb')){
+    const tid=e.target.dataset.tid;
+    if(e.target.checked)selectedIds.add(tid);else selectedIds.delete(tid);
+    updateExportBar();
+    document.querySelector(`.trip-card[data-tid="${tid}"]`)?.classList.toggle('sel',e.target.checked);
+    return;
+  }
+});
+
+// ── WIRE UP BUTTONS ───────────────────────────────────
+$('btn-signin').addEventListener('click',()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>alert('Sign in failed: '+e.message)));
+$('btn-signout').addEventListener('click',()=>{if(confirm('Sign out?'))fbSignOut(auth);});
+['btn-save-plan','btn-save-gear','btn-save-log','btn-save-post'].forEach(id=>$(id)?.addEventListener('click',saveTrip));
+$('inp-trip-photo')?.addEventListener('change',async function(){const file=this.files[0];if(!file)return;this.value='';await handleTripPhotoUpload(file,editId||('t'+Date.now()));});
+$('btn-new-trip')?.addEventListener('click',()=>{
+  collapseAllInlineMaps();
+  resetForm();
+  showTab('pre');
+});
+$('btn-detail-share')?.addEventListener('click',()=>{const t=trips.find(x=>x.id===detailId);if(t){generateShareCard(t);openModal('share-modal');}});
+$('btn-download-share')?.addEventListener('click',()=>{const cv=$('share-canvas');if(!cv)return;const a=document.createElement('a');a.download='BFT_'+new Date().toISOString().slice(0,10)+'.png';a.href=cv.toDataURL('image/png');a.click();});
+
+// Trip photo upload
+$('inp-trip-photo')?.addEventListener('change',async function(){
+  const file=this.files[0];if(!file)return;
+  this.value='';
+  const id=editId||('t'+Date.now());
+  await handleTripPhotoUpload(file,id);
+});
+
+// Share button
+$('btn-new-trip')?.addEventListener('click',()=>{
+  collapseAllInlineMaps();
+  resetForm();
+  showTab('pre');
+});
+$('btn-detail-share')?.addEventListener('click',()=>{
+  const t=trips.find(x=>x.id===detailId);if(!t)return;
+  generateShareCard(t);openModal('share-modal');
+});
+$('btn-download-share')?.addEventListener('click',()=>{
+  const canvas=$('share-canvas');if(!canvas)return;
+  const a=document.createElement('a');
+  a.download='BigFishingTrip_'+(new Date().toISOString().slice(0,10))+'.png';
+  a.href=canvas.toDataURL('image/png');a.click();
+});
+$('btn-add-setup').addEventListener('click',()=>addSetup());
+$('btn-add-day').addEventListener('click',()=>addDay());
+$('btn-add-comp').addEventListener('click',()=>addCompRow());
+$('btn-add-task').addEventListener('click',()=>addTask());
+$('btn-add-shop').addEventListener('click',()=>addShopRow());
+$('btn-add-works').addEventListener('click',()=>addBullet('works-list'));
+$('btn-add-lessons').addEventListener('click',()=>addBullet('lessons-list'));
+$('btn-add-failure').addEventListener('click',()=>addFailure());
+$('btn-add-fix').addEventListener('click',()=>addFix());
+$('btn-add-misc').addEventListener('click',()=>addMiscCost());
+$('btn-load-setup-trip').addEventListener('click',showLoadSetupModal);
+$('btn-load-setup-lib').addEventListener('click',showSetupLibModal);
+$('sel-all').addEventListener('click',()=>{
+  if(selectedIds.size===trips.length)selectedIds=new Set();
+  else trips.forEach(t=>selectedIds.add(t.id));
+  renderTrips();
+});
+$('btn-export').addEventListener('click',exportSelected);
+$('btn-detail-close').addEventListener('click',closeDetail);
+$('btn-detail-edit').addEventListener('click',()=>{if(detailId)editTrip(detailId);});
+$('btn-detail-delete').addEventListener('click',()=>{if(detailId){deleteId=detailId;openModal('del-modal');}});
+$('btn-del-step1').addEventListener('click',()=>{
+  closeModal('del-modal');if(!deleteId)return;
+  const code=Array.from({length:3},()=>String.fromCharCode(65+Math.floor(Math.random()*26))).join('');
+  $('del-code').textContent=code;$('del-verify-input').value='';openModal('del-verify-modal');
+});
+$('btn-del-final').addEventListener('click',async()=>{
+  const input=$('del-verify-input').value.toUpperCase().trim();
+  const code=$('del-code').textContent.trim();
+  if(input!==code){alert('Incorrect letters. Trip not deleted.');return;}
+  closeModal('del-verify-modal');
+  if(!deleteId)return;
+  await doDelete(deleteId);
+  if(detailId===deleteId)closeDetail();
+  deleteId=null;renderTrips();
+});
+$('btn-merge').addEventListener('click',mergeTCXIntoTrip);
+$('btn-new-trip-tcx').addEventListener('click',createNewTripFromTCX);
+
+// Tab buttons
+['trips','pre','log','post','insights'].forEach(n=>{
+  $('tb-'+n)?.addEventListener('click',()=>showTab(n));
+});
+
+// Pre-trip sub-tabs
+$('pst-planning')?.addEventListener('click',()=>showPreTab('planning'));
+$('pst-gear')?.addEventListener('click',()=>showPreTab('gear'));
+
+// Close modals
+// Cancel buttons — if editing return to My Trips, if new reset form
+function handleCancel(){
+  if(editId){
+    editId=null;
+    resetForm();
+    showTab('trips');
+  } else {
+    resetForm();
+    showTab('pre');
+  }
+}
+['btn-cancel-plan','btn-cancel-gear','btn-cancel-log','btn-cancel-post'].forEach(id=>{
+  $(id)?.addEventListener('click',handleCancel);
+});
+
+document.querySelectorAll('.modal-close').forEach(b=>{
+  b.addEventListener('click',()=>b.closest('.modal-overlay')?.classList.remove('open'));
+});
+
+// Cost auto-calc
+['cost-charter','cost-transport','cost-accom'].forEach(id=>{
+  $(id)?.addEventListener('input',calcPreCostTotal);
+});
+
+// Return date validation
+$('pre-to')?.addEventListener('change',function(){
+  const df=$('pre-from')?.value;
+  if(df&&this.value&&this.value<df){alert('Return date cannot be before departure date.');this.value=df;}
+});
+
+// ── INIT ──────────────────────────────────────────────
+try{
+  initStars();
+  resetForm();
+}catch(e){
+  console.error('Init error:',e);
+  $('login').classList.add('show');
+}
+</script>
+</body>
+</html>
